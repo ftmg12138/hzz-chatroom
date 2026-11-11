@@ -2,8 +2,10 @@
   const EV = { visit: "页面访问", register: "注册", register_limited: "注册限流", login: "登录", admin_login: "管理员登录", login_fail: "登录失败",
     login_limited: "登录限流", login_banned: "封禁账号登录", logout: "退出", password_change: "修改密码", room_create: "创建房间", room_join: "进入房间",
     room_join_fail: "房间密码错误", room_join_limited: "进房限流", admin_ban: "封禁用户", admin_unban: "解封用户", admin_delete_user: "删除用户",
-    admin_delete_room: "删除房间", admin_clear_messages: "清空消息", admin_delete_message: "删除消息" };
-  const BAD = new Set(["login_fail", "login_limited", "login_banned", "room_join_fail", "room_join_limited", "register_limited"]);
+    admin_delete_room: "删除房间", admin_clear_messages: "清空消息", admin_delete_message: "删除消息",
+    video_visit: "视频·页面访问", video_room_create: "视频·创建房间", video_join: "视频·进入房间", video_join_fail: "视频·房间密码错误",
+    video_join_limited: "视频·进房限流", video_connect: "视频·上线", video_leave: "视频·离开房间" };
+  const BAD = new Set(["login_fail", "login_limited", "login_banned", "room_join_fail", "room_join_limited", "register_limited", "video_join_fail", "video_join_limited"]);
   let me = null, lastId = null, tab = "logs", curRoom = null;
   const show = (id) => ["v-login", "v-chpw", "v-main"].forEach((v) => $("#" + v).classList.toggle("hidden", v !== id));
 
@@ -53,7 +55,7 @@
   async function logs(reset) {
     if (reset) { lastId = null; $("#lt").innerHTML = ""; }
     const p = new URLSearchParams({ limit: 100 });
-    const f = { event: $("#lf-event").value, username: $("#lf-user").value.trim(), ip: $("#lf-ip").value.trim(), room: $("#lf-room").value.trim(), q: $("#lf-q").value.trim() };
+    const f = { scope: $("#lf-scope").value, event: $("#lf-event").value, username: $("#lf-user").value.trim(), ip: $("#lf-ip").value.trim(), room: $("#lf-room").value.trim(), q: $("#lf-q").value.trim() };
     for (const [k, v] of Object.entries(f)) if (v) p.set(k, v);
     if (lastId) p.set("before", lastId);
     try {
@@ -63,7 +65,7 @@
       sel.value = cur;
       $("#lt").insertAdjacentHTML("beforeend", d.rows.map((r) => `<tr>
         <td class="nowrap">${esc(tokyo(r.ts))}</td>
-        <td><span class="tag ${BAD.has(r.event) ? "bad" : r.event.startsWith("admin") ? "adm" : ""}">${esc(EV[r.event] || r.event)}</span></td>
+        <td><span class="tag ${BAD.has(r.event) ? "bad" : r.event.startsWith("admin") ? "adm" : r.event.startsWith("video_") ? "vid" : ""}">${esc(EV[r.event] || r.event)}</span></td>
         <td>${esc(r.username || "")}</td><td>${esc(r.room || "")}</td>
         <td class="nowrap"><a href="#" data-ip="${esc(r.ip || "")}">${esc(r.ip || "")}</a></td><td>${esc(r.country || "")}</td>
         <td>${esc([r.path, r.detail].filter(Boolean).join(" · "))}</td><td class="ua">${esc(r.ua || "")}</td></tr>`).join(""));
@@ -113,12 +115,13 @@
   async function rooms() {
     try {
       const { rows } = await api("/api/admin/rooms?q=" + encodeURIComponent($("#rf-q").value.trim()));
-      $("#rt").innerHTML = rows.map((r) => `<tr>
-        <td><b>${esc(r.number)}</b></td><td>${esc(r.name || "")}</td><td>${esc(r.creator_name || "")}</td>
+      const kind = $("#rf-kind").value;
+      $("#rt").innerHTML = rows.filter((r) => !kind || r.kind === kind).map((r) => `<tr>
+        <td><b>${esc(r.number)}</b></td><td>${r.kind === "video" ? '<span class="tag vid">视频</span>' : '<span class="tag">文字</span>'}</td><td>${esc(r.name || "")}</td><td>${esc(r.creator_name || "")}</td>
         <td class="nowrap">${esc(tokyo(r.created_at))}</td><td class="nowrap">${esc(tokyo(r.last_active_at))}</td>
         <td>${r.members ?? ""}</td><td>${r.messages ?? ""}</td><td>${esc((r.online || []).join("、"))}</td>
         <td class="nowrap"><button class="btn ghost sm" data-view="${esc(r.number)}">消息</button>
-          <button class="btn danger sm" data-delroom="${esc(r.number)}">删除房间</button></td></tr>`).join("") || `<tr><td colspan="9" class="empty">没有房间</td></tr>`;
+          <button class="btn danger sm" data-delroom="${esc(r.number)}">删除房间</button></td></tr>`).join("") || `<tr><td colspan="10" class="empty">没有房间</td></tr>`;
     } catch (er) { handle(er); }
   }
   $("#rt").onclick = async (e) => {
@@ -129,6 +132,8 @@
     }
   };
   $("#rf").onsubmit = (e) => { e.preventDefault(); rooms(); };
+  $("#rf-kind").onchange = () => rooms();
+  $("#lf-scope").onchange = () => logs(true);
   async function openMsgs(number) {
     curRoom = number;
     $("#md-title").textContent = `房间 ${number} 的消息`;

@@ -97,3 +97,4 @@ td.nowrap,th.nowrap{white-space:nowrap}
 .side .list li{justify-content:flex-start;border-top:0;padding:5px 0}
 .btn{white-space:nowrap;flex:none}
 td.msgtxt{max-width:360px;word-break:break-word;white-space:pre-wrap}
+.tag.vid{background:rgba(138,92,246,.14);color:#8a5cf6}

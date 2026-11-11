@@ -22,6 +22,12 @@ class_name = "Directory"
 name = "ROOMS"
 class_name = "ChatRoom"
 
+# 视频房间 DO（在 videochatroom Worker 中），后台用它查看/清空消息、踢人、删除视频房间
+[[durable_objects.bindings]]
+name = "VROOMS"
+class_name = "VideoRoom"
+script_name = "videochatroom"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Directory", "ChatRoom"]

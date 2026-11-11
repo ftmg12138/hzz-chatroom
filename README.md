@@ -36,5 +36,9 @@ scripts/push.sh "提交说明"                            # 需要 CHATROOM_GITH
 - 房间：`createRoom(token, number, password, name, "video", ctx)`、`joinRoom(...)`、`checkRoomAccess(token, number)` 已支持 `kind` 字段。
 - `ALLOWED_ORIGINS` 已包含 https://videochatroom.xyzhzz.com。
 
+## 与 videochatroom 的联动（已上线）
+- videochatroom Worker 绑定本 Worker 的 `Directory`；本 Worker 通过 `VROOMS`（script_name="videochatroom"）管理视频房间
+- 后台：日志可按「文字 / 视频」筛选，房间列表显示类型；封禁/删除用户会同时把他踢出文字和视频房间
+
 ## 说明
 Cloudflare API 令牌目前没有 D1 权限，所以账号库用 SQLite Durable Object 代替 D1（功能等价，数据同样持久化）。

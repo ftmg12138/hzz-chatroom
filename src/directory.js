@@ -117,7 +117,7 @@ export class Directory extends DurableObject {
   }
 
   // ---------- 公共 RPC ----------
-  async logVisit(c) { this.log("visit", c); return true; }
+  async logVisit(c, ev = "visit") { this.log(ev === "video_visit" ? "video_visit" : "visit", c); return true; }
 
   async register(username, password, c) {
     return this.wrap(async () => {
@@ -207,45 +207,49 @@ export class Directory extends DurableObject {
       this.sql.exec("INSERT INTO rooms(number,kind,name,pw_hash,pw_salt,pw_iter,creator_id,creator_name,created_at,last_active_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
         number, kind, name || null, h.hash, h.salt, h.iter, u.id, u.username, now, now);
       this.sql.exec("INSERT OR REPLACE INTO room_access(user_id,room,granted_at) VALUES(?,?,?)", u.id, number, now);
-      this.log("room_create", { ...c, userId: u.id, username: u.username, room: number });
+      this.log(kind === "video" ? "video_room_create" : "room_create", { ...c, userId: u.id, username: u.username, room: number });
       return { room: { number, name, kind } };
     });
   }
 
-  async joinRoom(token, number, password, c) {
+  async joinRoom(token, number, password, c, kind = "text") {
+    kind = kind === "video" ? "video" : "text";
+    const ev = kind === "video" ? "video_join" : "room_join";
     return this.wrap(async () => {
       const u = await this.sessionUser(token);
       if (!u) fail(401, "请先登录");
       if (u.must_change) fail(403, "请先修改密码");
       number = String(number || "").trim();
       if (!this.hit(`join-ip:${c.ip}`, 30, 600e3) || !this.hit(`join:${u.id}:${number.toLowerCase()}`, 8, 600e3)) {
-        this.log("room_join_limited", { ...c, userId: u.id, username: u.username, room: number.slice(0, 20) });
+        this.log(ev + "_limited", { ...c, userId: u.id, username: u.username, room: number.slice(0, 20) });
         fail(429, "尝试次数过多，请 10 分钟后再试");
       }
       const r = this.one("SELECT * FROM rooms WHERE number=?", number);
-      const ok = r ? await verifyPassword(String(password || ""), r.pw_hash, r.pw_salt, r.pw_iter) : false;
-      if (!ok) { this.log("room_join_fail", { ...c, userId: u.id, username: u.username, room: number.slice(0, 20) }); fail(403, "房间号或房间密码错误"); }
+      const ok = r && r.kind === kind ? await verifyPassword(String(password || ""), r.pw_hash, r.pw_salt, r.pw_iter) : false;
+      if (!ok) {
+        if (r && r.kind !== kind) { this.log(ev + "_fail", { ...c, userId: u.id, username: u.username, room: r.number, detail: "房间类型不符" }); fail(400, kind === "video" ? "这是文字聊天室的房间号，请到 chatroom.xyzhzz.com 进入" : "这是视频聊天室的房间号，请到 videochatroom.xyzhzz.com 进入"); }
+        this.log(ev + "_fail", { ...c, userId: u.id, username: u.username, room: number.slice(0, 20) }); fail(403, "房间号或房间密码错误"); }
       this.sql.exec("INSERT OR REPLACE INTO room_access(user_id,room,granted_at) VALUES(?,?,?)", u.id, r.number, Date.now());
-      this.log("room_join", { ...c, userId: u.id, username: u.username, room: r.number });
+      this.log(ev, { ...c, userId: u.id, username: u.username, room: r.number });
       return { room: { number: r.number, name: r.name, kind: r.kind } };
     });
   }
 
   /** 已登录且已凭密码进入过该房间 → 返回 { user, room }，否则 null */
-  async checkRoomAccess(token, number) {
+  async checkRoomAccess(token, number, kind = "text") {
     const u = await this.sessionUser(token);
     if (!u || u.must_change) return null;
-    const r = this.one(`SELECT r.number, r.name, r.kind FROM rooms r JOIN room_access a ON a.room=r.number WHERE a.user_id=? AND r.number=?`, u.id, String(number));
+    const r = this.one(`SELECT r.number, r.name, r.kind FROM rooms r JOIN room_access a ON a.room=r.number WHERE a.user_id=? AND r.number=? AND r.kind=?`, u.id, String(number), kind === "video" ? "video" : "text");
     if (!r) return null;
     this.sql.exec("UPDATE rooms SET last_active_at=? WHERE number=?", Date.now(), r.number);
     return { user: this.publicUser(u), room: r };
   }
 
-  async myRooms(token) {
+  async myRooms(token, kind = "text") {
     const u = await this.sessionUser(token);
     if (!u) return null;
     return this.all(`SELECT r.number, r.name, r.kind, r.creator_name, r.last_active_at FROM room_access a JOIN rooms r ON r.number=a.room
-                     WHERE a.user_id=? ORDER BY r.last_active_at DESC LIMIT 50`, u.id);
+                     WHERE a.user_id=? AND r.kind=? ORDER BY r.last_active_at DESC LIMIT 50`, u.id, kind === "video" ? "video" : "text");
   }
 
   async leaveRoom(token, number) {
@@ -254,7 +258,7 @@ export class Directory extends DurableObject {
     return true;
   }
 
-  async roomEvent(ev, c) { this.log(ev, c); return true; }
+  async roomEvent(ev, c) { if (/^(video|room)_[a-z_]+$/.test(ev)) this.log(ev, c); return true; }
 
   // ---------- 管理 ----------
   async requireAdmin(token) {
@@ -270,6 +274,8 @@ export class Directory extends DurableObject {
       await this.requireAdmin(token);
       const where = [], args = [];
       if (f.event) { where.push("event=?"); args.push(f.event); }
+      if (f.scope === "video") where.push("event LIKE 'video\\_%' ESCAPE '\\'");
+      else if (f.scope === "text") where.push("event NOT LIKE 'video\\_%' ESCAPE '\\'");
       if (f.username) { where.push("username LIKE ?"); args.push(`%${f.username}%`); }
       if (f.ip) { where.push("ip LIKE ?"); args.push(`%${f.ip}%`); }
       if (f.room) { where.push("room LIKE ?"); args.push(`%${f.room}%`); }
@@ -305,7 +311,7 @@ export class Directory extends DurableObject {
       this.sql.exec("UPDATE users SET banned=?, ban_reason=? WHERE id=?", banned ? 1 : 0, banned ? String(reason || "").slice(0, 100) || null : null, u.id);
       if (banned) this.sql.exec("DELETE FROM sessions WHERE user_id=?", u.id);
       this.log(banned ? "admin_ban" : "admin_unban", { ...c, userId: a.id, username: a.username, detail: `目标：${u.username}` });
-      const rooms = banned ? this.all("SELECT room FROM room_access WHERE user_id=?", u.id).map((r) => r.room) : [];
+      const rooms = banned ? this.userRooms(u.id) : [];
       return { userId: u.id, rooms };
     });
   }
@@ -316,13 +322,17 @@ export class Directory extends DurableObject {
       const u = this.one("SELECT * FROM users WHERE id=?", Number(userId));
       if (!u) fail(404, "用户不存在");
       if (u.is_admin) fail(400, "不能删除管理员");
-      const rooms = this.all("SELECT room FROM room_access WHERE user_id=?", u.id).map((r) => r.room);
+      const rooms = this.userRooms(u.id);
       this.sql.exec("DELETE FROM sessions WHERE user_id=?", u.id);
       this.sql.exec("DELETE FROM room_access WHERE user_id=?", u.id);
       this.sql.exec("DELETE FROM users WHERE id=?", u.id);
       this.log("admin_delete_user", { ...c, userId: a.id, username: a.username, detail: `目标：${u.username}` });
       return { userId: u.id, rooms };
     });
+  }
+
+  userRooms(uid) {
+    return this.all("SELECT a.room AS number, COALESCE(r.kind,'text') AS kind FROM room_access a LEFT JOIN rooms r ON r.number=a.room WHERE a.user_id=?", uid);
   }
 
   async adminRooms(token, q) {
@@ -339,13 +349,18 @@ export class Directory extends DurableObject {
   async adminDeleteRoom(token, number, c) {
     return this.wrap(async () => {
       const a = await this.requireAdmin(token);
-      const r = this.one("SELECT number FROM rooms WHERE number=?", String(number));
+      const r = this.one("SELECT number, kind FROM rooms WHERE number=?", String(number));
       if (!r) fail(404, "房间不存在");
       this.sql.exec("DELETE FROM room_access WHERE room=?", r.number);
       this.sql.exec("DELETE FROM rooms WHERE number=?", r.number);
-      this.log("admin_delete_room", { ...c, userId: a.id, username: a.username, room: r.number });
-      return { number: r.number };
+      this.log("admin_delete_room", { ...c, userId: a.id, username: a.username, room: r.number, detail: r.kind === "video" ? "视频房间" : null });
+      return { number: r.number, kind: r.kind };
     });
+  }
+
+  /** 只读：房间类型（admin 用于选择对应 DO） */
+  async adminRoomKind(token, number) {
+    return this.wrap(async () => { await this.requireAdmin(token); return this.one("SELECT kind FROM rooms WHERE number=?", String(number))?.kind || "text"; });
   }
 
   async adminCheck(token) { return this.wrap(async () => this.publicUser(await this.requireAdmin(token))); }

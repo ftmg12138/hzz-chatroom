@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>管理后台 · HZZ 聊天室</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="/style.css?v=3">
+<link rel="stylesheet" href="/style.css?v=4">
 </head>
 <body>
 <section id="v-login" class="wrap hidden">
@@ -48,6 +48,7 @@
 
     <div id="t-logs">
       <form class="filters" id="lf">
+        <select id="lf-scope"><option value="">文字+视频</option><option value="text">仅文字聊天室</option><option value="video">仅视频聊天室</option></select>
         <select id="lf-event"><option value="">全部事件</option></select>
         <input id="lf-user" placeholder="用户名">
         <input id="lf-ip" placeholder="IP">
@@ -70,9 +71,9 @@
     </div>
 
     <div id="t-rooms" class="hidden">
-      <form class="filters" id="rf"><input id="rf-q" placeholder="搜索房间号或创建者"><button class="btn sm" type="submit">搜索</button></form>
+      <form class="filters" id="rf"><select id="rf-kind"><option value="">全部类型</option><option value="text">文字</option><option value="video">视频</option></select><input id="rf-q" placeholder="搜索房间号或创建者"><button class="btn sm" type="submit">搜索</button></form>
       <div class="tbl-wrap"><table><thead><tr>
-        <th>房间号</th><th>名称</th><th>创建者</th><th class="nowrap">创建时间（东京）</th><th class="nowrap">最近活跃（东京）</th><th>成员</th><th>消息</th><th>在线</th><th>操作</th>
+        <th>房间号</th><th>类型</th><th>名称</th><th>创建者</th><th class="nowrap">创建时间（东京）</th><th class="nowrap">最近活跃（东京）</th><th>成员</th><th>消息</th><th>在线</th><th>操作</th>
       </tr></thead><tbody id="rt"></tbody></table></div>
     </div>
   </div>
@@ -83,7 +84,7 @@
   <div class="tbl-wrap"><table><thead><tr><th class="nowrap">时间（东京）</th><th>用户</th><th>内容</th><th>IP</th><th></th></tr></thead><tbody id="md-body"></tbody></table></div>
 </div></div>
 
-<script src="/common.js?v=3"></script>
-<script src="/admin.js?v=3"></script>
+<script src="/common.js?v=4"></script>
+<script src="/admin.js?v=4"></script>
 </body>
 </html>

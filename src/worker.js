@@ -37,6 +37,9 @@ async function body(req) {
 }
 const dir = (env) => env.DIRECTORY.get(env.DIRECTORY.idFromName("main"));
 const roomStub = (env, number) => env.ROOMS.get(env.ROOMS.idFromName(String(number).toLowerCase()));
+// 视频房间 DO 在 videochatroom Worker 中（script_name 绑定 VROOMS），方法与 ChatRoom 的管理 RPC 同名
+const anyRoomStub = (env, number, kind) =>
+  kind === "video" ? (env.VROOMS ? env.VROOMS.get(env.VROOMS.idFromName(String(number).toLowerCase())) : null) : roomStub(env, number);
 const out = (r, extra = {}) => (r.ok ? json({ ...r.data, ...extra }) : err(r.status, r.error));
 
 const SECURITY_HEADERS = {
@@ -144,13 +147,13 @@ async function admin(req, env, url, D, token, c) {
   if (mm && m === "POST") {
     const b = (await body(req)) || {};
     const r = await D.adminSetBan(token, mm[1], !!b.banned, b.reason, c);
-    if (r.ok && b.banned) await Promise.all(r.data.rooms.map((n) => roomStub(env, n).kickUser(r.data.userId, "你的账号已被封禁").catch(() => {})));
+    if (r.ok && b.banned) await Promise.all(r.data.rooms.map((x) => anyRoomStub(env, x.number, x.kind)?.kickUser(r.data.userId, "你的账号已被封禁").catch(() => {})));
     return out(r);
   }
   mm = p.match(/^\/api\/admin\/users\/(\d+)$/);
   if (mm && m === "DELETE") {
     const r = await D.adminDeleteUser(token, mm[1], c);
-    if (r.ok) await Promise.all(r.data.rooms.map((n) => roomStub(env, n).kickUser(r.data.userId, "账号已被删除").catch(() => {})));
+    if (r.ok) await Promise.all(r.data.rooms.map((x) => anyRoomStub(env, x.number, x.kind)?.kickUser(r.data.userId, "账号已被删除").catch(() => {})));
     return out(r);
   }
   if (p === "/api/admin/rooms" && m === "GET") {
@@ -158,14 +161,16 @@ async function admin(req, env, url, D, token, c) {
     if (!r.ok) return out(r);
     const rows = r.data.rows;
     await Promise.all(rows.slice(0, 100).map(async (row) => {
-      try { Object.assign(row, await roomStub(env, row.number).stats()); } catch {}
+      try { const st = anyRoomStub(env, row.number, row.kind); if (st) Object.assign(row, await st.stats()); } catch {}
     }));
     return json({ rows });
   }
   mm = p.match(/^\/api\/admin\/rooms\/([^/]+)(\/messages(?:\/(\d+))?)?$/);
   if (mm) {
     const number = decodeURIComponent(mm[1]);
-    const stub = roomStub(env, number);
+    const kr = await D.adminRoomKind(token, number);
+    const stub = anyRoomStub(env, number, kr.ok ? kr.data : "text");
+    if (!stub) return err(503, "视频房间服务未绑定");
     if (!mm[2] && m === "DELETE") {
       const r = await D.adminDeleteRoom(token, number, c);
       if (r.ok) await stub.destroy();
