@@ -306,7 +306,7 @@ html[data-skin=cream]{
   --radius:26px;--radius-xl:34px;--radius-sm:16px;
   --shadow:0 16px 36px rgba(214,140,100,.13);--shadow-lg:0 26px 56px rgba(214,140,100,.22);--shadow-sm:0 8px 18px rgba(214,140,100,.1);
   --page-bg:url(/themes/cream-paws.svg);
-  --hero:url(/themes/cream-hero.webp);--hero-fallback:#ffe3cf;--hero-text:#5b3d2e;--hero-pos:right 18%;
+  --hero:url(/themes/cream-hero.webp);--hero-fallback:#ffe3cf;--hero-text:#5b3d2e;--hero-pos:right 42%;
   --hero-overlay:linear-gradient(90deg,rgba(255,236,220,.9) 0%,rgba(255,236,220,.55) 38%,rgba(255,236,220,0) 58%);
   --eyebrow-bg:#fff;--eyebrow-text:#e8704a;
   --auth-art:url(/themes/cream-auth.webp);--mascot:url(/themes/cream-mascot.webp);
@@ -488,7 +488,7 @@ html[data-skin=tavern] .vroom .title{font-family:var(--font-head);color:#f6dfa8}
   html[data-skin=forest] .hero,html[data-skin=cream] .hero,html[data-skin=tavern] .hero{display:block;padding:150px 20px 22px;background:var(--hero) var(--hero-m-pos,70% 0)/auto 190px no-repeat,var(--hero-m-solid)}
   html[data-skin=forest] .hero::before,html[data-skin=cream] .hero::before,html[data-skin=tavern] .hero::before{background:linear-gradient(180deg,transparent 0,transparent 100px,var(--hero-m-solid) 172px)}
   html[data-skin=forest] .hero p,html[data-skin=cream] .hero p,html[data-skin=tavern] .hero p{max-width:none}
-  html[data-skin=cream]{--hero-m-pos:80% 0}
+  html[data-skin=cream] .hero{background-size:auto 250px,auto;background-position:86% -46px,0 0}
 }
 .ph h3{white-space:nowrap}
 @media (max-width:560px){.ph .sub{display:none}}
