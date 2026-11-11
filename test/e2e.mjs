@@ -4,17 +4,19 @@ import fs from "node:fs";
 import WebSocket from "ws";
 const BASE = process.env.BASE || "http://127.0.0.1:8799";
 const ORIGIN = process.env.ORIGIN || "https://chatroom.xyzhzz.com";
-const ADMIN_PW = process.env.ADMIN_PW_FILE ? fs.readFileSync(process.env.ADMIN_PW_FILE, "utf8").replace(/[\r\n]/g, "") : process.env.ADMIN_PW;
+// 管理员已改密时，可用维护令牌（Worker secret MAINT_TOKEN，测试后删除）代替管理员登录
+const MAINT = process.env.MAINT_TOKEN_FILE ? fs.readFileSync(process.env.MAINT_TOKEN_FILE, "utf8").trim() : null;
+const ADMIN_PW = MAINT ? null : process.env.ADMIN_PW_FILE ? fs.readFileSync(process.env.ADMIN_PW_FILE, "utf8").replace(/[\r\n]/g, "") : process.env.ADMIN_PW;
 const sfx = Math.random().toString(36).slice(2, 7);
 let pass = 0, failN = 0;
 const ok = (c, name) => { if (c) { pass++; console.log("  ✓", name); } else { failN++; console.log("  ✗", name); } };
 
-function client() {
+function client(extra = {}) {
   let cookie = "";
   return {
     get cookie() { return cookie; },
     async req(path, method = "GET", body) {
-      const h = { Origin: ORIGIN };
+      const h = { Origin: ORIGIN, ...extra };
       if (cookie) h.Cookie = cookie;
       if (body !== undefined) h["content-type"] = "application/json";
       const r = await fetch(BASE + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -35,7 +37,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const wsOpen = (ws) => new Promise((res) => { ws.once("open", () => res(true)); ws.once("unexpected-response", (_q, r) => res(r.statusCode)); ws.once("error", () => res(false)); });
 async function waitFor(ws, pred, ms = 5000) { const t = Date.now(); while (Date.now() - t < ms) { const m = ws.msgs.find(pred); if (m) return m; await sleep(100); } return null; }
 
-const u1 = client(), u2 = client(), anon = client(), adm = client();
+const u1 = client(), u2 = client(), anon = client(), adm = client(MAINT ? { "X-Maint-Token": MAINT } : {});
 const n1 = `t1_${sfx}`, n2 = `t2_${sfx}`, room = `test-${sfx}`;
 const PW = "Test-pass-" + sfx + "!x", RPW = "rp-" + sfx;
 const ADMIN_NEW = "Tmp-Admin-" + Math.random().toString(36).slice(2) + "#9";
@@ -94,18 +96,30 @@ r = await u2.req("/api/rooms");
 ok(r.status === 200 && r.data.rooms.some((x) => x.number === room), "我的房间列表");
 
 console.log("管理后台");
-r = await adm.req("/api/admin/logs");
+r = await anon.req("/api/admin/logs");
 ok(r.status === 401, "未登录访问后台被拒");
+r = await fetch(BASE + "/api/admin/logs", { headers: { "X-Maint-Token": "0".repeat(64) } });
+ok(r.status === 401, "错误维护令牌被拒");
 r = await u1.req("/api/admin/logs");
 ok(r.status === 403, "普通用户访问后台被拒");
-r = await adm.req("/api/login", "POST", { username: "xyzhzzmaster", password: ADMIN_PW });
-ok(r.status === 200 && r.data.user.isAdmin && r.data.user.mustChange, "管理员初始密码登录，标记需改密");
-r = await adm.req("/api/admin/logs");
-ok(r.status === 403, "改密前后台接口被拒");
-r = await adm.req("/api/password", "POST", { oldPassword: ADMIN_PW, newPassword: "short" });
-ok(r.status === 400, "过短新密码被拒");
-r = await adm.req("/api/password", "POST", { oldPassword: ADMIN_PW, newPassword: ADMIN_NEW });
-ok(r.status === 200 && !r.data.user.mustChange, "强制改密成功");
+if (!MAINT) {
+  r = await adm.req("/api/login", "POST", { username: "xyzhzzmaster", password: ADMIN_PW });
+  ok(r.status === 200 && r.data.user.isAdmin && r.data.user.mustChange, "管理员初始密码登录，标记需改密");
+  r = await adm.req("/api/admin/logs");
+  ok(r.status === 403, "改密前后台接口被拒");
+  r = await adm.req("/api/password", "POST", { oldPassword: ADMIN_PW, newPassword: "short" });
+  ok(r.status === 400, "过短新密码被拒");
+  r = await adm.req("/api/password", "POST", { oldPassword: ADMIN_PW, newPassword: ADMIN_NEW });
+  ok(r.status === 200 && !r.data.user.mustChange, "强制改密成功");
+} else {
+  // 用普通用户验证改密流程（管理员密码不动）
+  r = await u1.req("/api/password", "POST", { oldPassword: PW, newPassword: "short" });
+  ok(r.status === 400, "过短新密码被拒");
+  r = await u1.req("/api/password", "POST", { oldPassword: "wrong-old", newPassword: PW + "2" });
+  ok(r.status === 400, "原密码错误被拒");
+  r = await u1.req("/api/password", "POST", { oldPassword: PW, newPassword: PW + "2" });
+  ok(r.status === 200, "用户修改密码成功");
+}
 r = await adm.req("/api/admin/logs?username=" + n1);
 ok(r.status === 200 && r.data.rows.length > 0 && r.data.rows.every((x) => x.username.includes(n1)), "日志按用户筛选");
 const reg = r.data.rows.find((x) => x.event === "register");
@@ -119,27 +133,29 @@ ok(r.status === 200 && r.data.rows.length === 2, "用户列表搜索");
 const id2 = r.data.rows.find((x) => x.username === n2).id, id1 = r.data.rows.find((x) => x.username === n1).id;
 r = await adm.req("/api/admin/rooms?q=" + room);
 ok(r.status === 200 && r.data.rows[0]?.messages >= 2 && r.data.rows[0].online.length === 2, "房间列表含消息数和在线成员");
-r = await adm.req(`/api/admin/rooms/${room}/messages`);
+r = await adm.req(`/api/admin/rooms/text/${room}/messages`);
 ok(r.status === 200 && r.data.rows.length >= 2 && r.data.rows[0].ip !== undefined, "查看房间消息");
 const mid = r.data.rows.find((x) => x.username === n2).id;
-r = await adm.req(`/api/admin/rooms/${room}/messages/${mid}`, "DELETE");
+r = await adm.req(`/api/admin/rooms/text/${room}/messages/${mid}`, "DELETE");
 ok(r.status === 200 && !!(await waitFor(w1, (m) => m.type === "deleted" && m.id === mid)), "删除单条消息并实时同步");
 r = await adm.req(`/api/admin/users/${id2}/ban`, "POST", { banned: true, reason: "测试" });
 ok(r.status === 200 && !!(await waitFor(w2b, (m) => m.type === "kicked")), "封禁用户并踢出房间");
 r = await u2.req("/api/me"); ok(r.status === 401, "封禁后会话失效");
 r = await u2.req("/api/login", "POST", { username: n2, password: PW }); ok(r.status === 403, "封禁用户无法登录");
 r = await adm.req(`/api/admin/users/${id2}/ban`, "POST", { banned: false }); ok(r.status === 200, "解封");
-r = await adm.req(`/api/admin/rooms/${room}/messages`, "DELETE");
+r = await adm.req(`/api/admin/rooms/text/${room}/messages`, "DELETE");
 ok(r.status === 200 && !!(await waitFor(w1, (m) => m.type === "cleared")), "清空房间消息");
 
 console.log("清理");
-r = await adm.req(`/api/admin/rooms/${room}`, "DELETE");
+r = await adm.req(`/api/admin/rooms/text/${room}`, "DELETE");
 ok(r.status === 200 && !!(await waitFor(w1, (m) => m.type === "kicked")), "删除房间并移出在线成员");
 for (const id of [id1, id2]) { r = await adm.req(`/api/admin/users/${id}`, "DELETE"); ok(r.status === 200, "删除测试用户 " + id); }
 r = await adm.req("/api/admin/users?q=" + sfx); ok(r.data.rows.length === 0, "测试用户已删除");
 r = await adm.req("/api/admin/rooms?q=" + room); ok(r.data.rows.length === 0, "测试房间已删除");
-r = await adm.req("/api/password", "POST", { oldPassword: ADMIN_NEW, newPassword: ADMIN_PW });
-ok(r.status === 200, "管理员密码改回初始值");
+if (!MAINT) {
+  r = await adm.req("/api/password", "POST", { oldPassword: ADMIN_NEW, newPassword: ADMIN_PW });
+  ok(r.status === 200, "管理员密码改回初始值");
+}
 for (const s of [w1, w2b]) try { s.terminate(); } catch {}
 
 if (process.env.RATE_TEST === "1") {

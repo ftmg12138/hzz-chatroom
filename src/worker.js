@@ -1,6 +1,7 @@
 // chatroom.xyzhzz.com 入口 Worker：API + 静态资源 + WebSocket 转发
 import { Directory } from "./directory.js";
 import { ChatRoom } from "./room.js";
+import { iceServers } from "./ice.js";
 export { Directory, ChatRoom };
 
 const COOKIE = "hzz_sid";
@@ -46,7 +47,7 @@ const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "same-origin",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
   "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
 };
 
@@ -87,9 +88,14 @@ async function api(req, env, url) {
   }
   if ((p === "/api/register" || p === "/api/login") && m === "POST") {
     const b = await body(req); if (!b) return err(400, "请求格式错误");
-    const r = p === "/api/register" ? await D.register(b.username, b.password, c) : await D.login(b.username, b.password, c);
+    const r = p === "/api/register" ? await D.register(b.username, b.password, c, b.code) : await D.login(b.username, b.password, c);
     if (!r.ok) return err(r.status, r.error);
     return json({ user: r.data.user }, 200, { "Set-Cookie": cookieHeader(env, r.data.token) });
+  }
+  if (p === "/api/reg-config" && m === "GET") return json(await D.regConfig());
+  if (p === "/api/ice" && m === "GET") {
+    if (!(await D.getSession(token))) return err(401, "未登录");
+    return json(await iceServers(env));
   }
   if (p === "/api/logout" && m === "POST") {
     if (token) await D.logout(token, c);
@@ -100,6 +106,15 @@ async function api(req, env, url) {
     return out(await D.changePassword(token, b.oldPassword, b.newPassword, c));
   }
 
+  if (p === "/api/avatar" && m === "POST") {
+    const b = await body(req); if (!b) return err(400, "请求格式错误");
+    return out(await D.setAvatar(token, b.avatar));
+  }
+  if (p === "/api/avatars" && m === "GET") {
+    const map = await D.avatarsFor(token, (url.searchParams.get("names") || "").split(","));
+    return map ? json({ avatars: map }) : err(401, "未登录");
+  }
+
   // ---- 房间 ----
   if (p === "/api/rooms" && m === "GET") {
     const rows = await D.myRooms(token);
@@ -107,7 +122,25 @@ async function api(req, env, url) {
   }
   if (p === "/api/rooms" && m === "POST") {
     const b = await body(req); if (!b) return err(400, "请求格式错误");
-    return out(await D.createRoom(token, b.number, b.password, b.name, "text", c));
+    return out(await D.createRoom(token, b.number, b.password, b.name, "text", c, b.visibility));
+  }
+  // 公开房间：列表 / 申请加入 / 房主处理申请
+  if (p === "/api/rooms/public" && m === "GET") {
+    const rows = await D.publicRooms(token, "text");
+    if (!rows) return err(401, "未登录");
+    await Promise.all(rows.slice(0, 60).map(async (r) => { try { r.online = (await roomStub(env, r.number).stats()).online.length; } catch { r.online = 0; } }));
+    return json({ rooms: rows });
+  }
+  if (p === "/api/rooms/request" && m === "POST") {
+    const b = await body(req); if (!b) return err(400, "请求格式错误");
+    const r = await D.requestJoin(token, b.number, "text", c);
+    if (r.ok && r.data.created) await roomStub(env, r.data.room).notifyUser(r.data.ownerId, { type: "join-request", id: r.data.id, username: r.data.username }).catch(() => {});
+    return out(r);
+  }
+  if (p === "/api/rooms/requests" && m === "GET") return out(await D.listRequests(token, url.searchParams.get("number") || "", "text"));
+  if (p === "/api/rooms/requests/decide" && m === "POST") {
+    const b = await body(req); if (!b) return err(400, "请求格式错误");
+    return out(await D.decideRequest(token, b.id, !!b.approve, c));
   }
   if (p === "/api/rooms/join" && m === "POST") {
     const b = await body(req); if (!b) return err(400, "请求格式错误");
@@ -115,7 +148,7 @@ async function api(req, env, url) {
   }
   if (p === "/api/rooms/leave" && m === "POST") {
     const b = await body(req); if (!b) return err(400, "请求格式错误");
-    await D.leaveRoom(token, b.number);
+    await D.leaveRoom(token, b.number, "text");
     return json({ ok: true });
   }
   let mm = p.match(/^\/api\/rooms\/([^/]+)\/ws$/);
@@ -125,12 +158,18 @@ async function api(req, env, url) {
     const number = decodeURIComponent(mm[1]);
     const acc = await D.checkRoomAccess(token, number);
     if (!acc) return err(403, "无权进入该房间，请先用房间号和密码加入");
-    const h = new Headers({ Upgrade: "websocket", "X-Uid": String(acc.user.id), "X-Username": acc.user.username, "X-Room": acc.room.number, "X-Ip": c.ip });
+    const h = new Headers({ Upgrade: "websocket", "X-Uid": String(acc.user.id), "X-Username": encodeURIComponent(acc.user.username), "X-Room": acc.room.number,
+      "X-Ip": c.ip, "X-Country": c.country, "X-UA": encodeURIComponent(c.ua.slice(0, 300).replace(/[\uD800-\uDFFF]/g, "")),
+      "X-Owner": String(acc.room.creator_id ?? ""), "X-Owner-Name": encodeURIComponent(acc.room.creator_name || ""), "X-Visibility": acc.room.visibility || "private", "X-Room-Name": encodeURIComponent(acc.room.name || "") });
     return roomStub(env, acc.room.number).fetch("https://room/ws", { headers: h });
   }
 
   // ---- 管理后台 ----
-  if (p.startsWith("/api/admin/")) return admin(req, env, url, D, token, c);
+  if (p.startsWith("/api/admin/")) {
+    // 自动化测试用维护令牌（仅当 secret MAINT_TOKEN 存在时有效）
+    const mt = req.headers.get("X-Maint-Token");
+    return admin(req, env, url, D, mt ? "maint:" + mt : token, c);
+  }
   return err(404, "接口不存在");
 }
 
@@ -143,6 +182,12 @@ async function admin(req, env, url, D, token, c) {
     return out(await D.adminLogs(token, Object.fromEntries(q)));
   }
   if (p === "/api/admin/users" && m === "GET") return out(await D.adminUsers(token, q.get("q") || ""));
+  if (p === "/api/admin/reg-config" && m === "GET") return out(await D.adminRegConfig(token));
+  if (p === "/api/admin/reg-config" && m === "POST") {
+    const b = (await body(req)) || {};
+    return out(await D.adminSetRegConfig(token, b.enabled, b.code, c, !!b.clearCode));
+  }
+  if (p === "/api/admin/users/seen" && m === "POST") { const b = (await body(req)) || {}; return out(await D.adminMarkUsersSeen(token, typeof b.at === "number" ? b.at : undefined)); }
   let mm = p.match(/^\/api\/admin\/users\/(\d+)\/ban$/);
   if (mm && m === "POST") {
     const b = (await body(req)) || {};
@@ -165,26 +210,53 @@ async function admin(req, env, url, D, token, c) {
     }));
     return json({ rows });
   }
-  mm = p.match(/^\/api\/admin\/rooms\/([^/]+)(\/messages(?:\/(\d+))?)?$/);
+  // 实时监控：所有房间的在线成员（含 IP）、语音/视频中的人、消息数、最近活跃
+  if (p === "/api/admin/monitor" && m === "GET") {
+    const r = await D.adminRooms(token, "");
+    if (!r.ok) return out(r);
+    const rows = r.data.rows.slice(0, 150);
+    await Promise.all(rows.map(async (row) => {
+      try { const st = anyRoomStub(env, row.number, row.kind); if (st) Object.assign(row, await st.stats()); } catch { row.members = []; }
+      row.lastActivity = Math.max(row.last_active_at || 0, row.lastMsgAt || 0) || null;
+    }));
+    rows.sort((x, y) => (y.members?.length || 0) - (x.members?.length || 0) || (y.lastActivity || 0) - (x.lastActivity || 0));
+    return json({ rows, now: Date.now() });
+  }
+  if (p === "/api/admin/requests" && m === "GET") return out(await D.adminRequests(token));
+  if (p === "/api/admin/requests/decide" && m === "POST") {
+    const b = (await body(req)) || {};
+    return out(await D.decideRequest(token, b.id, !!b.approve, c));
+  }
+  mm = p.match(/^\/api\/admin\/rooms\/(text|video)\/([^/]+)(\/messages(?:\/(\d+))?|\/kick|\/visibility)?$/);
   if (mm) {
-    const number = decodeURIComponent(mm[1]);
-    const kr = await D.adminRoomKind(token, number);
-    const stub = anyRoomStub(env, number, kr.ok ? kr.data : "text");
+    const kind = mm[1], number = decodeURIComponent(mm[2]), sub = mm[3] || "";
+    const stub = anyRoomStub(env, number, kind);
     if (!stub) return err(503, "视频房间服务未绑定");
-    if (!mm[2] && m === "DELETE") {
-      const r = await D.adminDeleteRoom(token, number, c);
+    if (!sub && m === "DELETE") {
+      // 解散：踢出所有人（文字/语音/视频），删除房间和全部记录
+      const r = await D.adminDeleteRoom(token, number, kind, c);
       if (r.ok) await stub.destroy();
       return out(r);
     }
-    if (mm[2] && !mm[3] && m === "GET") return json({ rows: await stub.adminMessages(Number(q.get("limit")) || 300) });
-    if (mm[2] && !mm[3] && m === "DELETE") {
+    if (sub === "/kick" && m === "POST") {
+      const b = (await body(req)) || {};
+      const r = await D.adminKickFromRoom(token, number, kind, b.userId, c);
+      if (r.ok) await stub.kickUser(Number(b.userId), "你已被管理员移出该房间");
+      return out(r);
+    }
+    if (sub === "/visibility" && m === "POST") {
+      const b = (await body(req)) || {};
+      return out(await D.adminSetVisibility(token, number, kind, b.visibility, c));
+    }
+    if (sub === "/messages" && m === "GET") return json({ rows: await stub.adminMessages(Number(q.get("limit")) || 300, Number(q.get("after")) || 0) });
+    if (sub === "/messages" && m === "DELETE") {
       await stub.clearMessages();
-      await D.adminAudit(token, "admin_clear_messages", { ...c, room: number });
+      await D.adminAudit(token, "admin_clear_messages", { ...c, room: number, detail: kind === "video" ? "视频房间" : "文字房间" });
       return json({ ok: true });
     }
-    if (mm[3] && m === "DELETE") {
-      await stub.deleteMessage(mm[3]);
-      await D.adminAudit(token, "admin_delete_message", { ...c, room: number, detail: `消息 #${mm[3]}` });
+    if (sub.startsWith("/messages/") && m === "DELETE") {
+      await stub.deleteMessage(mm[4]);
+      await D.adminAudit(token, "admin_delete_message", { ...c, room: number, detail: `消息 #${mm[4]}` });
       return json({ ok: true });
     }
   }

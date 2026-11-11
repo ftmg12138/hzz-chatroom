@@ -6,11 +6,12 @@
 <meta name="robots" content="noindex,nofollow">
 <title>管理后台 · HZZ 聊天室</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="/style.css?v=4">
+<script src="/theme.js?v=10"></script>
+<link rel="stylesheet" href="/style.css?v=10">
 </head>
 <body>
 <section id="v-login" class="wrap hidden">
-  <div class="brand"><div class="logo">管</div><h1>管理后台</h1></div>
+  <div class="brand"><div class="logo">管</div><h1>管理后台<span class="tagline">HZZ 聊天室 · 视频聊天室</span></h1></div>
   <div class="card">
     <form id="f-login">
       <label>管理员账号</label><input id="lg-user" autocomplete="username" required>
@@ -38,29 +39,38 @@
 
 <section id="v-main" class="hidden">
   <div class="top">
-    <div class="who">管理后台 · <b id="m-name"></b></div>
-    <div class="row nogrow"><a class="btn ghost sm" href="/">聊天室</a><button class="btn ghost sm" id="m-pw">改密码</button><button class="btn ghost sm" id="m-logout">退出</button></div>
+    <div class="who"><span class="brand-mini">🛡️</span>管理后台 · <b id="m-name"></b></div>
+    <div class="row nogrow"><a class="btn ghost sm" href="/">聊天室</a><button class="btn ghost sm icon theme-btn" data-theme-toggle>🌙</button><button class="btn ghost sm" id="m-pw">改密码</button><button class="btn ghost sm" id="m-logout">退出</button></div>
   </div>
   <div class="admin-wrap">
     <div class="admin-tabs">
-      <button data-t="logs" class="on">访问日志</button><button data-t="users">用户</button><button data-t="rooms">房间</button>
+      <button data-t="monitor" class="on">📡 实时监控</button>
+      <button data-t="rooms">🏠 房间</button>
+      <button data-t="requests">📨 申请 <span class="badge-n hidden" id="rq-badge"></span></button>
+      <button data-t="users">👥 用户 <span class="badge-n hidden" id="new-badge"></span></button>
+      <button data-t="logs">📜 访问日志</button>
+      <button data-t="settings">⚙️ 注册设置</button>
     </div>
 
-    <div id="t-logs">
-      <form class="filters" id="lf">
-        <select id="lf-scope"><option value="">文字+视频</option><option value="text">仅文字聊天室</option><option value="video">仅视频聊天室</option></select>
-        <select id="lf-event"><option value="">全部事件</option></select>
-        <input id="lf-user" placeholder="用户名">
-        <input id="lf-ip" placeholder="IP">
-        <input id="lf-room" placeholder="房间号">
-        <input id="lf-q" placeholder="关键词（UA/路径/国家…）">
-        <button class="btn sm" type="submit">筛选</button>
-        <button class="btn ghost sm" type="button" id="lf-reset">重置</button>
-      </form>
+    <div id="t-monitor">
+      <div class="kpis" id="mon-kpis"></div>
+      <div class="mon-bar">
+        <label class="switch"><input type="checkbox" id="mon-auto" checked> 每 5 秒自动刷新</label>
+        <label class="switch"><input type="checkbox" id="mon-active"> 只看有人在线的房间</label>
+        <span class="sub" id="mon-time"></span>
+      </div>
+      <div class="mon-grid" id="mon-grid"></div>
+    </div>
+
+    <div id="t-rooms" class="hidden">
+      <form class="filters" id="rf"><select id="rf-kind"><option value="">全部类型</option><option value="text">文字</option><option value="video">视频</option></select><input id="rf-q" placeholder="搜索房间号或房主"><button class="btn sm" type="submit">搜索</button></form>
       <div class="tbl-wrap"><table><thead><tr>
-        <th class="nowrap">时间（东京）</th><th>事件</th><th>用户</th><th>房间</th><th>IP</th><th>国家</th><th>路径/详情</th><th>User-Agent</th>
-      </tr></thead><tbody id="lt"></tbody></table></div>
-      <div class="pager"><span id="l-total"></span><button class="btn ghost sm" id="l-more">加载更多</button></div>
+        <th>房间号</th><th>类型</th><th>可见性</th><th>名称</th><th>房主</th><th class="nowrap">创建（东京）</th><th class="nowrap">最近活跃（东京）</th><th>成员</th><th>申请</th><th>消息</th><th>在线</th><th>语音/视频中</th><th>操作</th>
+      </tr></thead><tbody id="rt"></tbody></table></div>
+    </div>
+
+    <div id="t-requests" class="hidden">
+      <div class="tbl-wrap"><table><thead><tr><th class="nowrap">时间（东京）</th><th>申请人</th><th>房间</th><th>类型</th><th>房主</th><th>IP</th><th>操作</th></tr></thead><tbody id="qt"></tbody></table></div>
     </div>
 
     <div id="t-users" class="hidden">
@@ -70,21 +80,52 @@
       </tr></thead><tbody id="ut"></tbody></table></div>
     </div>
 
-    <div id="t-rooms" class="hidden">
-      <form class="filters" id="rf"><select id="rf-kind"><option value="">全部类型</option><option value="text">文字</option><option value="video">视频</option></select><input id="rf-q" placeholder="搜索房间号或创建者"><button class="btn sm" type="submit">搜索</button></form>
+    <div id="t-logs" class="hidden">
+      <form class="filters" id="lf">
+        <select id="lf-scope"><option value="">全部来源</option><option value="text">文字聊天室</option><option value="video">视频聊天室</option><option value="voice">语音频道</option><option value="register">注册相关</option></select>
+        <select id="lf-event"><option value="">全部事件</option></select>
+        <input id="lf-user" placeholder="用户名">
+        <input id="lf-ip" placeholder="IP">
+        <input id="lf-room" placeholder="房间号">
+        <input id="lf-q" placeholder="关键词（UA/路径/国家…）">
+        <button class="btn sm" type="submit">筛选</button>
+        <button class="btn ghost sm" type="button" id="lf-reset">重置</button>
+      </form>
       <div class="tbl-wrap"><table><thead><tr>
-        <th>房间号</th><th>类型</th><th>名称</th><th>创建者</th><th class="nowrap">创建时间（东京）</th><th class="nowrap">最近活跃（东京）</th><th>成员</th><th>消息</th><th>在线</th><th>操作</th>
-      </tr></thead><tbody id="rt"></tbody></table></div>
+        <th class="nowrap">时间（东京）</th><th>来源</th><th>事件</th><th>用户</th><th>房间</th><th>IP</th><th>国家</th><th>路径/详情</th><th>User-Agent</th>
+      </tr></thead><tbody id="lt"></tbody></table></div>
+      <div class="pager"><span id="l-total"></span><button class="btn ghost sm" id="l-more">加载更多</button></div>
+    </div>
+
+    <div id="t-settings" class="hidden">
+      <div class="card">
+        <h2>🔑 注册口令</h2>
+        <p class="notice mt0">开启后，在 chatroom 和 videochatroom 注册新账号都必须填写正确的口令。口令只以哈希形式保存，不会显示或写入日志；忘记了直接设置新口令即可。（本站没有邮件服务，无法邮件通知管理员，请在下方「新注册用户」里查看。）</p>
+        <div class="row reg-row">
+          <label class="switch"><input type="checkbox" id="rg-enabled"> <span id="rg-state">关闭</span></label>
+          <span class="sub" id="rg-info"></span>
+        </div>
+        <form id="rg-form" class="row reg-row">
+          <input id="rg-code" autocomplete="off" maxlength="64" placeholder="设置新口令（4–64 位）">
+          <button class="btn sm" type="submit">保存口令</button>
+          <button class="btn ghost sm" type="button" id="rg-clear">清除口令</button>
+        </form>
+        <div class="msg" id="rg-msg"></div>
+      </div>
+      <div class="card">
+        <div class="row"><h2 class="mt0">🆕 新注册用户</h2><button class="btn ghost sm nogrow" id="rg-seen">全部标为已读</button></div>
+        <div class="tbl-wrap"><table><thead><tr><th>用户名</th><th class="nowrap">注册时间（东京）</th><th>注册 IP</th><th>状态</th></tr></thead><tbody id="rg-list"></tbody></table></div>
+      </div>
     </div>
   </div>
 </section>
 
 <div class="modal hidden" id="modal"><div class="card">
-  <div class="row"><h2 id="md-title"></h2><div class="row nogrow"><button class="btn danger sm" id="md-clear">清空全部消息</button><button class="btn ghost sm" id="md-close">关闭</button></div></div>
+  <div class="row"><h2 id="md-title"></h2><div class="row nogrow"><label class="switch"><input type="checkbox" id="md-live" checked> 实时</label><button class="btn danger sm" id="md-clear">清空全部消息</button><button class="btn ghost sm" id="md-close">关闭</button></div></div>
   <div class="tbl-wrap"><table><thead><tr><th class="nowrap">时间（东京）</th><th>用户</th><th>内容</th><th>IP</th><th></th></tr></thead><tbody id="md-body"></tbody></table></div>
 </div></div>
 
-<script src="/common.js?v=4"></script>
-<script src="/admin.js?v=4"></script>
+<script src="/common.js?v=10"></script>
+<script src="/admin.js?v=10"></script>
 </body>
 </html>

@@ -2,6 +2,14 @@
   "name": "hzz-chatroom",
   "private": true,
   "type": "module",
-  "scripts": { "deploy": "scripts/deploy.sh", "test:e2e": "node test/e2e.mjs" },
-  "devDependencies": { "wrangler": "4.30.0", "ws": "^8.18.0" }
+  "scripts": {
+    "deploy": "scripts/deploy.sh",
+    "test:e2e": "node test/e2e.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.48.2",
+    "werift": "^0.19.9",
+    "wrangler": "4.30.0",
+    "ws": "^8.18.0"
+  }
 }

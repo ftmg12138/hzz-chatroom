@@ -1,0 +1,122 @@
+[
+  {
+    "id": "av01",
+    "file": "webp/av01.webp",
+    "name_zh": "精灵少女",
+    "category": "fantasy"
+  },
+  {
+    "id": "av02",
+    "file": "webp/av02.webp",
+    "name_zh": "精灵少年",
+    "category": "fantasy"
+  },
+  {
+    "id": "av03",
+    "file": "webp/av03.webp",
+    "name_zh": "矮人",
+    "category": "fantasy"
+  },
+  {
+    "id": "av04",
+    "file": "webp/av04.webp",
+    "name_zh": "猫人少女",
+    "category": "fantasy"
+  },
+  {
+    "id": "av05",
+    "file": "webp/av05.webp",
+    "name_zh": "猫人少年",
+    "category": "fantasy"
+  },
+  {
+    "id": "av06",
+    "file": "webp/av06.webp",
+    "name_zh": "法师",
+    "category": "fantasy"
+  },
+  {
+    "id": "av07",
+    "file": "webp/av07.webp",
+    "name_zh": "骑士",
+    "category": "fantasy"
+  },
+  {
+    "id": "av08",
+    "file": "webp/av08.webp",
+    "name_zh": "仙女",
+    "category": "fantasy"
+  },
+  {
+    "id": "av09",
+    "file": "webp/av09.webp",
+    "name_zh": "半兽人",
+    "category": "fantasy"
+  },
+  {
+    "id": "av10",
+    "file": "webp/av10.webp",
+    "name_zh": "人鱼",
+    "category": "fantasy"
+  },
+  {
+    "id": "av11",
+    "file": "webp/av11.webp",
+    "name_zh": "奶蛙",
+    "category": "animal"
+  },
+  {
+    "id": "av12",
+    "file": "webp/av12.webp",
+    "name_zh": "狐狸",
+    "category": "animal"
+  },
+  {
+    "id": "av13",
+    "file": "webp/av13.webp",
+    "name_zh": "兔子",
+    "category": "animal"
+  },
+  {
+    "id": "av14",
+    "file": "webp/av14.webp",
+    "name_zh": "熊猫",
+    "category": "animal"
+  },
+  {
+    "id": "av15",
+    "file": "webp/av15.webp",
+    "name_zh": "企鹅",
+    "category": "animal"
+  },
+  {
+    "id": "av16",
+    "file": "webp/av16.webp",
+    "name_zh": "柴犬",
+    "category": "animal"
+  },
+  {
+    "id": "av17",
+    "file": "webp/av17.webp",
+    "name_zh": "仓鼠",
+    "category": "animal"
+  },
+  {
+    "id": "av18",
+    "file": "webp/av18.webp",
+    "name_zh": "猫头鹰",
+    "category": "animal"
+  },
+  {
+    "id": "av19",
+    "file": "webp/av19.webp",
+    "name_zh": "小熊猫",
+    "category": "animal"
+  },
+  {
+    "id": "av20",
+    "file": "webp/av20.webp",
+    "name_zh": "小熊",
+    "category": "animal"
+  }
+]
