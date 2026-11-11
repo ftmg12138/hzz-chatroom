@@ -47,7 +47,7 @@ console.log("页面");
 for (const b of [C, V]) {
   const html = await (await fetch(b + "/")).text();
   ok(!/IP\s*地址|记录.*IP|安全审计/.test(html), `${b.replace("https://", "")} 注册页不再显示 IP 记录提示`);
-  ok(/data-theme-toggle/.test(html) && /theme\.js/.test(html), `${b.replace("https://", "")} 有主题切换`);
+  ok(/data-open-theme/.test(html) && /data-skin-set/.test(html) && /skins\.css/.test(html) && /theme\.js/.test(html), `${b.replace("https://", "")} 有主题选择器`);
   const mf = await fetch(b + "/avatars/manifest.json"); const j = await mf.json().catch(() => ({}));
   const list = Array.isArray(j) ? j : j.avatars || [];
   ok(mf.status === 200 && list.length >= 20, `${b.replace("https://", "")} 预设头像清单可访问（${list.length} 个${j.placeholder ? "，占位图" : ""}）`);

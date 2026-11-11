@@ -504,3 +504,7 @@ html[data-skin] .vroom .tile .off{background:radial-gradient(circle at 50% 42%,c
 html[data-skin] .vroom .tile .off::before{content:"";position:absolute;inset:0;background:var(--chat-pattern);opacity:.18}
 .skin-modal .row>[data-x]{flex:none}
 .skin-modal h2{margin:0}
+/* 侧栏帮助卡片的插画不挡点击；侧栏太矮时隐藏帮助卡片 */
+.snav-help .mascot{pointer-events:none}
+.snav-list{margin-bottom:52px}
+@media (min-width:901px) and (max-height:860px){.snav-help{display:none}.snav-list{margin-bottom:0}.snav-foot{margin-top:auto}}
