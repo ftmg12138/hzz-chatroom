@@ -17,6 +17,7 @@
 
   async function boot() {
     try { me = (await api("/api/me")).user; } catch { me = null; }
+    window.__me = me; if (me) syncSkin(me);
     if (!me) return show("v-login");
     if (!me.isAdmin) { show("v-login"); setMsg($("#lg-msg"), "当前登录的不是管理员账号，请退出后用管理员账号登录"); return; }
     if (me.mustChange) { $("#cp-cancel").classList.add("hidden"); return show("v-chpw"); }
@@ -52,6 +53,7 @@
     tab = b.dataset.t;
     $$("[data-t]").forEach((x) => x.classList.toggle("on", x === b));
     TABS.forEach((t) => $("#t-" + t).classList.toggle("hidden", t !== tab));
+    $("#v-main").classList.remove("nav-open"); window.scrollTo({ top: 0 });
     load();
   });
   function load() {
@@ -80,8 +82,8 @@
       const onlineRooms = rows.filter((r) => (r.members || []).length);
       const people = rows.reduce((n, r) => n + (r.members || []).length, 0);
       const inVoice = rows.reduce((n, r) => n + (r.voice || []).length, 0), inVideo = rows.filter((r) => r.kind === "video").reduce((n, r) => n + (r.members || []).length, 0);
-      $("#mon-kpis").innerHTML = [["房间总数", rows.length], ["有人在线的房间", onlineRooms.length], ["在线连接", people], ["语音中", inVoice], ["视频中", inVideo]]
-        .map(([k, v]) => `<div class="kpi"><b>${v}</b><span>${k}</span></div>`).join("");
+      $("#mon-kpis").innerHTML = [["在线连接", people, "🟢"], ["房间总数", rows.length, "🏠"], ["有人在线的房间", onlineRooms.length, "💬"], ["语音中", inVoice, "🎧"], ["视频中", inVideo, "🎥"]]
+        .map(([k, v, ico], i) => `<div class="kpi${i === 0 ? " hl" : ""}" data-ico="${ico}"><b>${v}</b><span>${k}</span></div>`).join("");
       const list = $("#mon-active").checked ? onlineRooms : rows;
       $("#mon-grid").innerHTML = list.map((r) => {
         const mem = r.members || [];

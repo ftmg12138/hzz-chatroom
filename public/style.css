@@ -260,5 +260,5 @@ td.nowrap,th.nowrap{white-space:nowrap}
 .top .who{min-width:0;overflow:hidden}
 .hello-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drawer .row .btn{flex:none}
-@media (max-width:560px){.hello-txt,#l-avatar{display:none}.top .row.nogrow{gap:4px}.top .btn.sm{padding-left:9px;padding-right:9px}}
+@media (max-width:560px){.hello-txt{display:none}.top .row.nogrow{gap:4px}.top .btn.sm{padding-left:9px;padding-right:9px}}
 .rooms .empty{grid-column:1/-1;text-align:center}

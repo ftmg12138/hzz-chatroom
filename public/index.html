@@ -6,33 +6,41 @@
 <title>HZZ 聊天室</title>
 <meta name="theme-color" content="#f5f4fb">
 <link rel="icon" href="data:,">
-<script src="/theme.js?v=10"></script>
-<link rel="stylesheet" href="/style.css?v=10">
+<script src="/theme.js?v=11"></script>
+<link rel="stylesheet" href="/style.css?v=11">
+<link rel="stylesheet" href="/skins.css?v=11">
 </head>
 <body>
-<!-- 登录 / 注册 -->
-<section id="v-auth" class="wrap hidden">
-  <div class="brand"><div class="logo">聊</div><h1>HZZ 聊天室<span class="tagline">和朋友们轻松聊聊</span></h1></div>
-  <div class="card">
-    <div class="tabs"><button data-tab="login" class="on">登录</button><button data-tab="register">注册</button></div>
-    <form id="f-auth" autocomplete="on">
-      <label for="a-user">用户名</label>
-      <input id="a-user" name="username" autocomplete="username" required maxlength="20" placeholder="3–20 位，中文 / 字母 / 数字 / 下划线">
-      <label for="a-pass">密码</label>
-      <input id="a-pass" name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="至少 8 位">
-      <div id="reg-extra" class="hidden">
-        <label for="a-pass2">确认密码</label>
-        <input id="a-pass2" type="password" autocomplete="new-password" maxlength="128" placeholder="再输入一次">
-        <div id="code-wrap" class="hidden">
-          <label for="a-code">注册口令</label>
-          <input id="a-code" autocomplete="off" maxlength="64" placeholder="管理员已开启口令注册，请向管理员索取">
+<!-- 登录 / 注册：左侧插画 + 右侧表单 -->
+<section id="v-auth" class="auth hidden">
+  <div class="auth-art"><div class="art-copy">
+    <h2 data-sk="authTitle">欢迎回到森林小屋</h2>
+    <p data-sk="authText">文字、语音、视频——和朋友待在同一片绿荫下。</p>
+    <div class="chips"><span>💬 文字房间</span><span>🎧 语音频道</span><span>🎥 视频通话</span><span>🌿 公开房间</span></div>
+  </div></div>
+  <div class="auth-panel">
+    <div class="brand"><div class="logo">聊</div><h1>HZZ 聊天室<span class="tagline" data-sk="tagline">在绿意里，慢慢聊</span></h1></div>
+    <div class="card">
+      <div class="tabs"><button data-tab="login" class="on">登录</button><button data-tab="register">注册</button></div>
+      <form id="f-auth" autocomplete="on">
+        <label for="a-user">用户名</label>
+        <input id="a-user" name="username" autocomplete="username" required maxlength="20" placeholder="3–20 位，中文 / 字母 / 数字 / 下划线">
+        <label for="a-pass">密码</label>
+        <input id="a-pass" name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="至少 8 位">
+        <div id="reg-extra" class="hidden">
+          <label for="a-pass2">确认密码</label>
+          <input id="a-pass2" type="password" autocomplete="new-password" maxlength="128" placeholder="再输入一次">
+          <div id="code-wrap" class="hidden">
+            <label for="a-code">注册口令</label>
+            <input id="a-code" autocomplete="off" maxlength="64" placeholder="管理员已开启口令注册，请向管理员索取">
+          </div>
         </div>
-      </div>
-      <button class="btn block" id="a-submit" type="submit">登录</button>
-      <div class="msg" id="a-msg"></div>
-    </form>
+        <button class="btn block lg" id="a-submit" type="submit">登录</button>
+        <div class="msg" id="a-msg"></div>
+      </form>
+    </div>
+    <div class="sub foot"><a href="https://videochatroom.xyzhzz.com/">🎥 视频聊天室 →</a><span class="skin-chips" title="切换主题"><button type="button" data-skin-set="forest" title="森林"></button><button type="button" data-skin-set="night" title="星夜"></button><button type="button" data-skin-set="cream" title="奶油萌宠"></button><button type="button" data-skin-set="tavern" title="西幻酒馆"></button></span></div>
   </div>
-  <p class="sub foot"><a href="https://videochatroom.xyzhzz.com/">视频聊天室 →</a> · <button class="btn ghost sm theme-btn" data-theme-toggle type="button">🌙</button></p>
 </section>
 
 <!-- 改密 -->
@@ -51,48 +59,78 @@
   </div>
 </section>
 
-<!-- 大厅 -->
-<section id="v-lobby" class="hidden">
-  <div class="top">
-    <div class="who"><span id="l-av"></span><span class="hello-txt">你好，<b id="l-name"></b></span></div>
-    <div class="row nogrow">
-      <a id="l-admin" class="btn ghost sm hidden" href="/admin">管理后台</a>
-      <a class="btn ghost sm" href="https://videochatroom.xyzhzz.com/">视频</a>
-      <button class="btn ghost sm icon theme-btn" data-theme-toggle>🌙</button>
-      <button class="btn ghost sm" id="l-avatar">头像</button>
-      <button class="btn ghost sm" id="l-pw">改密码</button>
-      <button class="btn ghost sm" id="l-logout">退出</button>
+<!-- 大厅：侧栏 + 主区（各主题用 CSS 改成顶部导航 / 图标轨道 / 木质招牌） -->
+<section id="v-lobby" class="app hidden">
+  <aside class="snav">
+    <div class="snav-brand"><div class="logo">聊</div><span>HZZ 聊天室<small data-sk="tagline">在绿意里，慢慢聊</small></span></div>
+    <nav class="snav-list">
+      <a href="#" class="on" data-nav="top"><i>🏠</i><span>大厅</span></a>
+      <a href="#" data-nav="my"><i>💬</i><span data-sk="my">我的房间</span></a>
+      <a href="#" data-nav="pub"><i>🌿</i><span data-sk="pub">公开房间</span></a>
+      <a href="https://videochatroom.xyzhzz.com/"><i>🎥</i><span>视频聊天室</span></a>
+      <a id="l-admin" class="hidden" href="/admin"><i>🛡️</i><span>管理后台</span></a>
+      <button type="button" data-open-theme><i>🎨</i><span>主题</span></button>
+    </nav>
+    <div class="snav-help"><div class="mascot"></div><b data-sk="helpTitle">第一次来？</b><p data-sk="helpText"></p><button class="btn sm" type="button" data-go="create">创建房间</button></div>
+    <div class="snav-foot">
+      <button type="button" id="l-avatar"><i>🙂</i><span>头像</span></button>
+      <button type="button" id="l-pw"><i>🔑</i><span>改密码</span></button>
+      <button type="button" id="l-logout"><i>🚪</i><span>退出</span></button>
     </div>
-  </div>
-  <div class="wrap wide">
-    <div class="grid2">
-      <div class="card">
-        <div class="tabs"><button data-rtab="join" class="on">加入私密房间</button><button data-rtab="create">创建房间</button></div>
-        <form id="f-room" autocomplete="off">
-          <div id="r-vis-wrap" class="hidden">
-            <label>房间类型</label>
-            <div class="seg">
-              <label><input type="radio" name="r-vis" value="private" checked><span>🔒 私密<small>凭房间号 + 密码进入，不在大厅显示</small></span></label>
-              <label><input type="radio" name="r-vis" value="public"><span>🌿 公开<small>显示在大厅，别人可申请加入</small></span></label>
+  </aside>
+  <div class="scrim" data-nav-close></div>
+  <main class="app-main">
+    <header class="mhead">
+      <div><h1>你好，<b id="l-name"></b> 👋</h1><p>今天想和谁聊聊？</p></div>
+      <div class="mh-tools">
+        <label class="search"><span>🔍</span><input id="l-search" placeholder="搜索房间号、名称或房主" autocomplete="off"></label>
+        <button class="ibtn hide-m" type="button" data-open-theme title="主题">🎨</button>
+        <span id="l-av"></span>
+      </div>
+    </header>
+    <section class="hero">
+      <div class="hero-txt">
+        <span class="eyebrow" data-sk="eyebrow">🌿 今日好时光</span>
+        <h2 data-sk="heroTitle">找个角落，和朋友聊聊天</h2>
+        <p data-sk="heroText"></p>
+        <div class="row"><button class="btn lg" type="button" data-go="create">＋ 创建房间</button><button class="btn lg light" type="button" data-go="join">🔑 用房间号加入</button></div>
+      </div>
+    </section>
+    <div class="dash">
+      <div class="dash-main">
+        <section class="panel" id="my"><div class="ph"><h3><span data-sk="my">我的房间</span> <span class="count" id="l-rooms-n">0</span></h3><span class="sub">凭密码进入过或获批加入的房间</span></div><div class="rgrid" id="l-rooms"></div></section>
+        <section class="panel" id="pub"><div class="ph"><h3><span data-sk="pub">公开房间</span> <span class="count" id="l-pub-n">0</span></h3><span class="sub">点「申请加入」，房主同意后就能进</span></div><div class="rgrid" id="l-pub"></div></section>
+      </div>
+      <div class="dash-side">
+        <section class="stat-card"><div class="stat-mascot"></div><h3 data-sk="statTitle">此刻的大厅</h3><div class="big"><span id="st-online">0</span><small>人在线</small></div>
+          <div class="stat-nums"><div><b id="st-my">0</b><span>我的房间</span></div><div><b id="st-pub">0</b><span>公开房间</span></div><div><b id="st-own">0</b><span>我创建的</span></div></div></section>
+        <section class="panel" id="roomform">
+          <div class="tabs"><button data-rtab="join" class="on">加入私密房间</button><button data-rtab="create">创建房间</button></div>
+          <form id="f-room" autocomplete="off">
+            <div id="r-vis-wrap" class="hidden">
+              <div class="seg">
+                <label><input type="radio" name="r-vis" value="private" checked><span>🔒 私密<small>凭房间号 + 密码进入</small></span></label>
+                <label><input type="radio" name="r-vis" value="public"><span>🌿 公开<small>显示在大厅，可申请加入</small></span></label>
+              </div>
             </div>
-          </div>
-          <label>房间号</label><input id="r-num" required maxlength="20" placeholder="3–20 位，字母 / 数字 / - / _" autocapitalize="off">
-          <label id="r-pass-label">房间密码</label><input id="r-pass" type="password" maxlength="64" autocomplete="new-password" placeholder="4–64 位">
-          <div id="r-create-extra" class="hidden"><label>房间名称（可选）</label><input id="r-name" maxlength="30" placeholder="例如：周末闲聊"></div>
-          <button class="btn block" id="r-submit" type="submit">加入</button>
-          <div class="msg" id="r-msg"></div>
-        </form>
-      </div>
-      <div class="card">
-        <h2>我的房间 <span class="count" id="l-rooms-n">0</span></h2>
-        <ul class="list" id="l-rooms"></ul>
+            <label>房间号</label><input id="r-num" required maxlength="20" placeholder="3–20 位，字母 / 数字 / - / _" autocapitalize="off">
+            <label id="r-pass-label">房间密码</label><input id="r-pass" type="password" maxlength="64" autocomplete="new-password" placeholder="4–64 位">
+            <div id="r-create-extra" class="hidden"><label>房间名称（可选）</label><input id="r-name" maxlength="30" placeholder="例如：周末闲聊"></div>
+            <button class="btn block" id="r-submit" type="submit">加入</button>
+            <div class="msg" id="r-msg"></div>
+          </form>
+        </section>
+        <section class="panel"><div class="ph"><h3 data-sk="feed">最近动态</h3></div><ul class="feed" id="l-feed"></ul></section>
       </div>
     </div>
-    <div class="card">
-      <h2>🌿 公开房间 <span class="count" id="l-pub-n">0</span></h2>
-      <div class="rooms" id="l-pub"></div>
-    </div>
-  </div>
+  </main>
+  <nav class="tabbar">
+    <a href="#" class="on" data-nav="top"><i>🏠</i>大厅</a>
+    <a href="#" data-nav="my"><i>💬</i>我的</a>
+    <a href="#" data-nav="pub"><i>🌿</i>公开</a>
+    <button type="button" data-open-theme><i>🎨</i>主题</button>
+    <button type="button" data-nav-open><i>☰</i>更多</button>
+  </nav>
 </section>
 
 <!-- 聊天 -->
@@ -104,7 +142,7 @@
       <button class="btn ghost sm hidden" id="rq-btn" title="加入申请">📨 <span class="badge-n hidden" id="rq-n">0</span></button>
       <button class="btn ghost sm" id="vc-toggle" title="语音频道">🎧 <span id="vc-count">0</span></button>
       <button class="btn ghost sm online-btn" id="ch-online-btn">👥 <span id="ch-count">0</span></button>
-      <button class="btn ghost sm icon theme-btn" data-theme-toggle>🌙</button>
+      <button class="btn ghost sm icon" data-open-theme title="主题">🎨</button>
     </div>
   </div>
   <div class="voicebar" id="vc-bar">
@@ -133,7 +171,7 @@
   </div>
 </section>
 
-<script src="/common.js?v=10"></script>
-<script src="/app.js?v=10"></script>
+<script src="/common.js?v=11"></script>
+<script src="/app.js?v=11"></script>
 </body>
 </html>

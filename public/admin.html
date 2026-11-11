@@ -6,11 +6,12 @@
 <meta name="robots" content="noindex,nofollow">
 <title>管理后台 · HZZ 聊天室</title>
 <link rel="icon" href="data:,">
-<script src="/theme.js?v=10"></script>
-<link rel="stylesheet" href="/style.css?v=10">
+<script src="/theme.js?v=11"></script>
+<link rel="stylesheet" href="/style.css?v=11">
+<link rel="stylesheet" href="/skins.css?v=11">
 </head>
 <body>
-<section id="v-login" class="wrap hidden">
+<section id="v-login" class="wrap admin-auth hidden">
   <div class="brand"><div class="logo">管</div><h1>管理后台<span class="tagline">HZZ 聊天室 · 视频聊天室</span></h1></div>
   <div class="card">
     <form id="f-login">
@@ -22,7 +23,7 @@
   </div>
 </section>
 
-<section id="v-chpw" class="wrap hidden">
+<section id="v-chpw" class="wrap admin-auth hidden">
   <div class="brand"><div class="logo">管</div><h1>修改管理员密码</h1></div>
   <div class="card">
     <p class="notice mt0" id="cp-tip">首次登录必须先修改初始密码（至少 10 位）。</p>
@@ -37,24 +38,33 @@
   </div>
 </section>
 
-<section id="v-main" class="hidden">
-  <div class="top">
-    <div class="who"><span class="brand-mini">🛡️</span>管理后台 · <b id="m-name"></b></div>
-    <div class="row nogrow"><a class="btn ghost sm" href="/">聊天室</a><button class="btn ghost sm icon theme-btn" data-theme-toggle>🌙</button><button class="btn ghost sm" id="m-pw">改密码</button><button class="btn ghost sm" id="m-logout">退出</button></div>
-  </div>
-  <div class="admin-wrap">
-    <div class="admin-tabs">
-      <button data-t="monitor" class="on">📡 实时监控</button>
-      <button data-t="rooms">🏠 房间</button>
-      <button data-t="requests">📨 申请 <span class="badge-n hidden" id="rq-badge"></span></button>
-      <button data-t="users">👥 用户 <span class="badge-n hidden" id="new-badge"></span></button>
-      <button data-t="logs">📜 访问日志</button>
-      <button data-t="settings">⚙️ 注册设置</button>
+<section id="v-main" class="app admin-app hidden">
+  <aside class="snav">
+    <div class="snav-brand"><div class="logo">管</div><span>管理后台<small>文字 · 语音 · 视频</small></span></div>
+    <nav class="snav-list">
+      <button type="button" data-t="monitor" class="on"><i>📡</i><span>实时监控</span></button>
+      <button type="button" data-t="rooms"><i>🏠</i><span>房间</span></button>
+      <button type="button" data-t="requests"><i>📨</i><span>加入申请</span> <span class="badge-n hidden" id="rq-badge"></span></button>
+      <button type="button" data-t="users"><i>👥</i><span>用户</span> <span class="badge-n hidden" id="new-badge"></span></button>
+      <button type="button" data-t="logs"><i>📜</i><span>访问日志</span></button>
+      <button type="button" data-t="settings"><i>⚙️</i><span>注册设置</span></button>
+    </nav>
+    <div class="snav-help"><div class="mascot"></div><b>管理员小贴士</b><p>「实时监控」里可以旁观房间、移出成员；注册口令在「注册设置」。</p><a class="btn sm" href="/">回到聊天室</a></div>
+    <div class="snav-foot">
+      <button type="button" data-open-theme><i>🎨</i><span>主题</span></button>
+      <button type="button" id="m-pw"><i>🔑</i><span>改密码</span></button>
+      <button type="button" id="m-logout"><i>🚪</i><span>退出</span></button>
     </div>
-
-    <div id="t-monitor">
+  </aside>
+  <div class="scrim" data-nav-close></div>
+  <main class="app-main admin-main">
+    <header class="mhead">
+      <div><h1>管理后台 🛡️</h1><p>你好，<b id="m-name"></b> · 两个站点的账号、房间和日志都在这里</p></div>
+      <div class="mh-tools"><a class="ibtn hide-m" href="/" title="聊天室">💬</a><a class="ibtn hide-m" href="https://videochatroom.xyzhzz.com/" title="视频聊天室">🎥</a><button class="ibtn hide-m" type="button" data-open-theme title="主题">🎨</button><button class="ibtn only-m" type="button" data-nav-open title="菜单">☰</button></div>
+    </header>
+    <div id="t-monitor" class="tpane">
       <div class="kpis" id="mon-kpis"></div>
-      <div class="mon-bar">
+      <div class="panel mon-panel mon-bar">
         <label class="switch"><input type="checkbox" id="mon-auto" checked> 每 5 秒自动刷新</label>
         <label class="switch"><input type="checkbox" id="mon-active"> 只看有人在线的房间</label>
         <span class="sub" id="mon-time"></span>
@@ -62,25 +72,25 @@
       <div class="mon-grid" id="mon-grid"></div>
     </div>
 
-    <div id="t-rooms" class="hidden">
+    <div id="t-rooms" class="tpane panel hidden">
       <form class="filters" id="rf"><select id="rf-kind"><option value="">全部类型</option><option value="text">文字</option><option value="video">视频</option></select><input id="rf-q" placeholder="搜索房间号或房主"><button class="btn sm" type="submit">搜索</button></form>
       <div class="tbl-wrap"><table><thead><tr>
         <th>房间号</th><th>类型</th><th>可见性</th><th>名称</th><th>房主</th><th class="nowrap">创建（东京）</th><th class="nowrap">最近活跃（东京）</th><th>成员</th><th>申请</th><th>消息</th><th>在线</th><th>语音/视频中</th><th>操作</th>
       </tr></thead><tbody id="rt"></tbody></table></div>
     </div>
 
-    <div id="t-requests" class="hidden">
+    <div id="t-requests" class="tpane panel hidden">
       <div class="tbl-wrap"><table><thead><tr><th class="nowrap">时间（东京）</th><th>申请人</th><th>房间</th><th>类型</th><th>房主</th><th>IP</th><th>操作</th></tr></thead><tbody id="qt"></tbody></table></div>
     </div>
 
-    <div id="t-users" class="hidden">
+    <div id="t-users" class="tpane panel hidden">
       <form class="filters" id="uf"><input id="uf-q" placeholder="搜索用户名或 IP"><button class="btn sm" type="submit">搜索</button></form>
       <div class="tbl-wrap"><table><thead><tr>
         <th>ID</th><th>用户名</th><th>状态</th><th class="nowrap">注册时间（东京）</th><th>注册 IP</th><th class="nowrap">最近登录（东京）</th><th>最近 IP</th><th>操作</th>
       </tr></thead><tbody id="ut"></tbody></table></div>
     </div>
 
-    <div id="t-logs" class="hidden">
+    <div id="t-logs" class="tpane panel hidden">
       <form class="filters" id="lf">
         <select id="lf-scope"><option value="">全部来源</option><option value="text">文字聊天室</option><option value="video">视频聊天室</option><option value="voice">语音频道</option><option value="register">注册相关</option></select>
         <select id="lf-event"><option value="">全部事件</option></select>
@@ -97,7 +107,7 @@
       <div class="pager"><span id="l-total"></span><button class="btn ghost sm" id="l-more">加载更多</button></div>
     </div>
 
-    <div id="t-settings" class="hidden">
+    <div id="t-settings" class="tpane hidden">
       <div class="card">
         <h2>🔑 注册口令</h2>
         <p class="notice mt0">开启后，在 chatroom 和 videochatroom 注册新账号都必须填写正确的口令。口令只以哈希形式保存，不会显示或写入日志；忘记了直接设置新口令即可。（本站没有邮件服务，无法邮件通知管理员，请在下方「新注册用户」里查看。）</p>
@@ -117,7 +127,7 @@
         <div class="tbl-wrap"><table><thead><tr><th>用户名</th><th class="nowrap">注册时间（东京）</th><th>注册 IP</th><th>状态</th></tr></thead><tbody id="rg-list"></tbody></table></div>
       </div>
     </div>
-  </div>
+  </main>
 </section>
 
 <div class="modal hidden" id="modal"><div class="card">
@@ -125,7 +135,7 @@
   <div class="tbl-wrap"><table><thead><tr><th class="nowrap">时间（东京）</th><th>用户</th><th>内容</th><th>IP</th><th></th></tr></thead><tbody id="md-body"></tbody></table></div>
 </div></div>
 
-<script src="/common.js?v=10"></script>
-<script src="/admin.js?v=10"></script>
+<script src="/common.js?v=11"></script>
+<script src="/admin.js?v=11"></script>
 </body>
 </html>

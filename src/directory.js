@@ -92,6 +92,13 @@ export class Directory extends DurableObject {
         this.setMeta("schema_version", 4);
       });
     }
+    if (Number(this.meta("schema_version")) < 5) {
+      // v5：界面主题（forest / night / cream / tavern）
+      this.ctx.storage.transactionSync(() => {
+        this.sql.exec("ALTER TABLE users ADD COLUMN theme TEXT");
+        this.setMeta("schema_version", 5);
+      });
+    }
   }
 
   // ---------- 工具 ----------
@@ -148,7 +155,7 @@ export class Directory extends DurableObject {
   }
 
   publicUser(u) {
-    return u && { id: u.id, username: u.username, isAdmin: !!u.is_admin, mustChange: !!u.must_change, avatar: u.avatar || null };
+    return u && { id: u.id, username: u.username, isAdmin: !!u.is_admin, mustChange: !!u.must_change, avatar: u.avatar || null, theme: u.theme || null };
   }
 
   // ---------- 头像 ----------
@@ -160,6 +167,15 @@ export class Directory extends DurableObject {
       if (avatar !== null && !/^(p:av\d{2}|c:#[0-9a-f]{6})$/.test(avatar)) fail(400, "头像格式不正确");
       this.sql.exec("UPDATE users SET avatar=? WHERE id=?", avatar, u.id);
       return { user: this.publicUser({ ...u, avatar }) };
+    });
+  }
+  async setTheme(token, theme) {
+    return this.wrap(async () => {
+      const u = await this.sessionUser(token);
+      if (!u) fail(401, "请先登录");
+      if (!["forest", "night", "cream", "tavern"].includes(theme)) fail(400, "未知主题");
+      this.sql.exec("UPDATE users SET theme=? WHERE id=?", theme, u.id);
+      return { user: this.publicUser({ ...u, theme }) };
     });
   }
   /** 批量查询用户名对应的头像（需登录），用于消息、成员列表等处显示 */

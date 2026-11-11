@@ -110,6 +110,10 @@ async function api(req, env, url) {
     const b = await body(req); if (!b) return err(400, "请求格式错误");
     return out(await D.setAvatar(token, b.avatar));
   }
+  if (p === "/api/theme" && m === "POST") {
+    const b = await body(req); if (!b) return err(400, "请求格式错误");
+    return out(await D.setTheme(token, b.theme));
+  }
   if (p === "/api/avatars" && m === "GET") {
     const map = await D.avatarsFor(token, (url.searchParams.get("names") || "").split(","));
     return map ? json({ avatars: map }) : err(401, "未登录");
