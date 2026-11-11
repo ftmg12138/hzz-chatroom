@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>管理后台 · HZZ 聊天室</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/style.css?v=3">
+</head>
+<body>
+<section id="v-login" class="wrap hidden">
+  <div class="brand"><div class="logo">管</div><h1>管理后台</h1></div>
+  <div class="card">
+    <form id="f-login">
+      <label>管理员账号</label><input id="lg-user" autocomplete="username" required>
+      <label>密码</label><input id="lg-pass" type="password" autocomplete="current-password" required>
+      <button class="btn block" id="lg-btn" type="submit">登录</button>
+      <div class="msg" id="lg-msg"></div>
+    </form>
+  </div>
+</section>
+
+<section id="v-chpw" class="wrap hidden">
+  <div class="brand"><div class="logo">管</div><h1>修改管理员密码</h1></div>
+  <div class="card">
+    <p class="notice mt0" id="cp-tip">首次登录必须先修改初始密码（至少 10 位）。</p>
+    <form id="f-chpw">
+      <label>原密码</label><input id="cp-old" type="password" autocomplete="current-password" required>
+      <label>新密码</label><input id="cp-new" type="password" autocomplete="new-password" required>
+      <label>确认新密码</label><input id="cp-new2" type="password" autocomplete="new-password" required>
+      <button class="btn block" type="submit">确认修改</button>
+      <button class="btn ghost block hidden" type="button" id="cp-cancel">返回后台</button>
+      <div class="msg" id="cp-msg"></div>
+    </form>
+  </div>
+</section>
+
+<section id="v-main" class="hidden">
+  <div class="top">
+    <div class="who">管理后台 · <b id="m-name"></b></div>
+    <div class="row nogrow"><a class="btn ghost sm" href="/">聊天室</a><button class="btn ghost sm" id="m-pw">改密码</button><button class="btn ghost sm" id="m-logout">退出</button></div>
+  </div>
+  <div class="admin-wrap">
+    <div class="admin-tabs">
+      <button data-t="logs" class="on">访问日志</button><button data-t="users">用户</button><button data-t="rooms">房间</button>
+    </div>
+
+    <div id="t-logs">
+      <form class="filters" id="lf">
+        <select id="lf-event"><option value="">全部事件</option></select>
+        <input id="lf-user" placeholder="用户名">
+        <input id="lf-ip" placeholder="IP">
+        <input id="lf-room" placeholder="房间号">
+        <input id="lf-q" placeholder="关键词（UA/路径/国家…）">
+        <button class="btn sm" type="submit">筛选</button>
+        <button class="btn ghost sm" type="button" id="lf-reset">重置</button>
+      </form>
+      <div class="tbl-wrap"><table><thead><tr>
+        <th class="nowrap">时间（东京）</th><th>事件</th><th>用户</th><th>房间</th><th>IP</th><th>国家</th><th>路径/详情</th><th>User-Agent</th>
+      </tr></thead><tbody id="lt"></tbody></table></div>
+      <div class="pager"><span id="l-total"></span><button class="btn ghost sm" id="l-more">加载更多</button></div>
+    </div>
+
+    <div id="t-users" class="hidden">
+      <form class="filters" id="uf"><input id="uf-q" placeholder="搜索用户名或 IP"><button class="btn sm" type="submit">搜索</button></form>
+      <div class="tbl-wrap"><table><thead><tr>
+        <th>ID</th><th>用户名</th><th>状态</th><th class="nowrap">注册时间（东京）</th><th>注册 IP</th><th class="nowrap">最近登录（东京）</th><th>最近 IP</th><th>操作</th>
+      </tr></thead><tbody id="ut"></tbody></table></div>
+    </div>
+
+    <div id="t-rooms" class="hidden">
+      <form class="filters" id="rf"><input id="rf-q" placeholder="搜索房间号或创建者"><button class="btn sm" type="submit">搜索</button></form>
+      <div class="tbl-wrap"><table><thead><tr>
+        <th>房间号</th><th>名称</th><th>创建者</th><th class="nowrap">创建时间（东京）</th><th class="nowrap">最近活跃（东京）</th><th>成员</th><th>消息</th><th>在线</th><th>操作</th>
+      </tr></thead><tbody id="rt"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<div class="modal hidden" id="modal"><div class="card">
+  <div class="row"><h2 id="md-title"></h2><div class="row nogrow"><button class="btn danger sm" id="md-clear">清空全部消息</button><button class="btn ghost sm" id="md-close">关闭</button></div></div>
+  <div class="tbl-wrap"><table><thead><tr><th class="nowrap">时间（东京）</th><th>用户</th><th>内容</th><th>IP</th><th></th></tr></thead><tbody id="md-body"></tbody></table></div>
+</div></div>
+
+<script src="/common.js?v=3"></script>
+<script src="/admin.js?v=3"></script>
+</body>
+</html>

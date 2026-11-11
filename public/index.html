@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HZZ 聊天室</title>
+<meta name="theme-color" content="#4f6bed">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/style.css?v=3">
+</head>
+<body>
+<!-- 登录 / 注册 -->
+<section id="v-auth" class="wrap hidden">
+  <div class="brand"><div class="logo">聊</div><h1>HZZ 聊天室</h1></div>
+  <div class="card">
+    <div class="tabs"><button data-tab="login" class="on">登录</button><button data-tab="register">注册</button></div>
+    <form id="f-auth" autocomplete="on">
+      <label for="a-user">用户名</label>
+      <input id="a-user" name="username" autocomplete="username" required maxlength="20" placeholder="3–20 位，中文/字母/数字/下划线">
+      <label for="a-pass">密码</label>
+      <input id="a-pass" name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="至少 8 位">
+      <div id="reg-extra" class="hidden">
+        <label for="a-pass2">确认密码</label>
+        <input id="a-pass2" type="password" autocomplete="new-password" maxlength="128">
+        <div class="notice">🔒 安全提示：为防范滥用，本站会记录登录、注册和进入房间时的 IP 地址、所在地区与浏览器信息，仅用于安全审计。继续注册即表示你同意上述记录。</div>
+      </div>
+      <button class="btn block" id="a-submit" type="submit">登录</button>
+      <div class="msg" id="a-msg"></div>
+    </form>
+  </div>
+</section>
+
+<!-- 强制改密 -->
+<section id="v-chpw" class="wrap hidden">
+  <div class="brand"><div class="logo">聊</div><h1>修改密码</h1></div>
+  <div class="card">
+    <p class="notice mt0">首次登录需要先修改初始密码。</p>
+    <form id="f-chpw">
+      <label>原密码</label><input id="c-old" type="password" autocomplete="current-password" required>
+      <label>新密码</label><input id="c-new" type="password" autocomplete="new-password" required>
+      <label>确认新密码</label><input id="c-new2" type="password" autocomplete="new-password" required>
+      <button class="btn block" type="submit">确认修改</button>
+      <div class="msg" id="c-msg"></div>
+    </form>
+  </div>
+</section>
+
+<!-- 大厅 -->
+<section id="v-lobby" class="hidden">
+  <div class="top">
+    <div class="who">你好，<b id="l-name"></b></div>
+    <div class="row nogrow">
+      <a id="l-admin" class="btn ghost sm hidden" href="/admin">管理后台</a>
+      <button class="btn ghost sm" id="l-pw">改密码</button>
+      <button class="btn ghost sm" id="l-logout">退出</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <div class="tabs"><button data-rtab="join" class="on">加入房间</button><button data-rtab="create">创建房间</button></div>
+      <form id="f-room" autocomplete="off">
+        <label>房间号</label><input id="r-num" required maxlength="20" placeholder="3–20 位，字母/数字/-/_" autocapitalize="off">
+        <label>房间密码</label><input id="r-pass" type="password" required maxlength="64" autocomplete="new-password" placeholder="4–64 位">
+        <div id="r-create-extra" class="hidden"><label>房间名称（可选）</label><input id="r-name" maxlength="30" placeholder="例如：周末开黑"></div>
+        <button class="btn block" id="r-submit" type="submit">加入</button>
+        <div class="msg" id="r-msg"></div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>我的房间</h2>
+      <ul class="list" id="l-rooms"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- 聊天 -->
+<section id="v-chat" class="chat hidden">
+  <div class="top">
+    <button class="btn ghost sm" id="ch-back">‹ 大厅</button>
+    <div class="center-col"><div class="title" id="ch-title"></div><div class="status" id="ch-status">连接中…</div></div>
+    <button class="btn ghost sm online-btn" id="ch-online-btn">在线 <span id="ch-count">0</span></button>
+  </div>
+  <div class="chat-body">
+    <div class="msgs" id="ch-msgs"></div>
+    <aside class="side" id="ch-side"><h3>在线成员（<span id="ch-count2">0</span>）</h3><ul class="list" id="ch-online"></ul></aside>
+  </div>
+  <form class="composer" id="f-send">
+    <textarea id="ch-input" placeholder="输入消息，Enter 发送" maxlength="2000" rows="1"></textarea>
+    <button class="btn" type="submit">发送</button>
+  </form>
+</section>
+
+<script src="/common.js?v=3"></script>
+<script src="/app.js?v=3"></script>
+</body>
+</html>

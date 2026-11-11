@@ -1,0 +1,38 @@
+name = "chatroom"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+account_id = "f57ee3b3ec6a868c05a73c1b2b54d531"
+workers_dev = false
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"
+
+# 账号 / 会话 / 房间登记 / 访问日志：单实例 SQLite Durable Object
+# （将来 videochatroom 的 Worker 可用 script_name = "chatroom" 绑定同一个 Directory 复用账号）
+[[durable_objects.bindings]]
+name = "DIRECTORY"
+class_name = "Directory"
+
+# 每个房间一个实例：WebSocket + 消息历史
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Directory", "ChatRoom"]
+
+[[routes]]
+pattern = "chatroom.xyzhzz.com"
+custom_domain = true
+
+[vars]
+COOKIE_DOMAIN = "xyzhzz.com"
+ALLOWED_ORIGINS = "https://chatroom.xyzhzz.com,https://videochatroom.xyzhzz.com"
+
+[observability]
+enabled = false

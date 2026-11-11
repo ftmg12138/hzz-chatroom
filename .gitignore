@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+.cache/
+.dev.vars
+.secrets/
+*.secret
+.env
