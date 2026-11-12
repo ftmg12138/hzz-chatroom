@@ -151,7 +151,7 @@
   function closeWs() { $("#rq-panel").classList.add("hidden"); voiceStop(); $("#vc-bar").classList.remove("open"); wantClose = true; clearInterval(pingT); if (ws) { try { ws.close(); } catch {} } ws = null; curRoom = null; }
   function openRoom(number) {
     if (curRoom === number && ws) return;
-    closeWs(); wantClose = false; curRoom = number; retry = 0;
+    closeWs(); wantClose = false; curRoom = number; retry = 0; closingSelf = false; isOwner = false; $("#close-room-btn").classList.add("hidden");
     show("v-chat");
     $("#ch-title").textContent = "房间 " + number;
     $("#ch-msgs").innerHTML = "";
@@ -169,7 +169,7 @@
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.type === "hello") {
         $("#ch-title").innerHTML = `${esc(m.name || m.room)}<small>${m.visibility === "public" ? "🌿 公开" : "🔒 私密"} · ${esc(m.room)}</small>`;
-        isOwner = !!m.isOwner; $("#rq-btn").classList.toggle("hidden", !isOwner); if (isOwner) loadRequests();
+        isOwner = !!m.isOwner; $("#rq-btn").classList.toggle("hidden", !isOwner); $("#close-room-btn").classList.toggle("hidden", !isOwner); if (isOwner) loadRequests();
         $("#ch-msgs").innerHTML = "";
         if (!m.history.length) addSys("还没有消息，打个招呼吧 👋").classList.add("hint");
         m.history.forEach(addMsg); online(m.online); scrollEnd(true);
@@ -184,7 +184,7 @@
         scrollEnd();
       } else if (m.type === "deleted") { const el = document.querySelector(`[data-id="${m.id}"]`); if (el) el.remove(); }
       else if (m.type === "cleared") { $("#ch-msgs").innerHTML = ""; addMsg(m.msg); }
-      else if (m.type === "kicked") { wantClose = true; alert(m.reason); location.hash = ""; }
+      else if (m.type === "kicked") { wantClose = true; if (m.closed) { if (!closingSelf) toast(m.reason, 5000); } else alert(m.reason); location.hash = ""; }
       else if (m.type === "error") addSys("⚠ " + m.error);
       else if (m.type === "join-request") { toast(`${m.username} 申请加入房间`); loadRequests(); }
       else if (m.type.startsWith("voice-")) onVoice(m);
@@ -249,7 +249,7 @@
   $("#ch-msgs").onclick = () => $("#ch-side").classList.remove("open");
 
   // ===== 房主：处理加入申请 =====
-  let isOwner = false;
+  let isOwner = false, closingSelf = false;
   async function loadRequests() {
     if (!isOwner || !curRoom) return;
     try {
@@ -259,6 +259,15 @@
         <div class="row nogrow"><button class="btn ok sm" data-ok="${r.id}">同意</button><button class="btn ghost sm" data-no="${r.id}">拒绝</button></div></li>`).join("") : `<li class="empty">暂时没有新的申请</li>`;
     } catch {}
   }
+  // 房主关闭房间：确认后调用 /api/rooms/close，服务器会把房间里所有人（包括自己）踢回大厅
+  $("#close-room-btn").onclick = async () => {
+    const n = curRoom; if (!n || !isOwner) return;
+    const yes = await confirmDialog({ title: "关闭房间？", text: `房间「${n}」会被删除，房间里的所有人会被移出并回到大厅，聊天记录一并清除，此操作不能撤销。`, ok: "关闭房间" });
+    if (!yes) return;
+    closingSelf = true;
+    try { await api("/api/rooms/close", { method: "POST", body: { number: n } }); toast("房间已关闭"); location.hash = ""; }
+    catch (er) { closingSelf = false; toast(er.message); }
+  };
   $("#rq-btn").onclick = () => { $("#rq-panel").classList.toggle("hidden"); loadRequests(); };
   $("#rq-close").onclick = () => $("#rq-panel").classList.add("hidden");
   $("#rq-list").onclick = async (e) => {

@@ -613,6 +613,24 @@ export class Directory extends DurableObject {
     });
   }
 
+  /** 房主（或管理员）关闭房间：删除房间登记、进入权限和加入申请，房间号随即释放 */
+  async closeRoom(token, number, kind, c) {
+    return this.wrap(async () => {
+      const u = await this.sessionUser(token);
+      if (!u) fail(401, "请先登录");
+      kind = kind === "video" ? "video" : "text";
+      const r = this.one("SELECT number, kind, creator_id, creator_name FROM rooms WHERE kind=? AND number=?", kind, String(number || "").trim());
+      if (!r) fail(404, "房间不存在");
+      if (!u.is_admin && (r.creator_id == null || r.creator_id !== u.id)) fail(403, "只有房主可以关闭房间");
+      this.sql.exec("DELETE FROM room_access WHERE kind=? AND room=?", kind, r.number);
+      this.sql.exec("DELETE FROM rooms WHERE kind=? AND number=?", kind, r.number);
+      this.sql.exec("DELETE FROM join_requests WHERE kind=? AND room=?", kind, r.number);
+      this.log(kind === "video" ? "video_room_close" : "room_close", { ...c, userId: u.id, username: u.username, room: r.number,
+        detail: r.creator_id === u.id ? "房主关闭房间" : `管理员关闭房间（房主 ${r.creator_name || "未知"}）` });
+      return { number: r.number, kind, byOwner: r.creator_id === u.id };
+    });
+  }
+
   /** 把某人移出房间：撤销其进入权限（再进需要重新输入房间密码） */
   async adminKickFromRoom(token, number, kind, userId, c) {
     return this.wrap(async () => {

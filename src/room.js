@@ -179,11 +179,11 @@ export class ChatRoom extends DurableObject {
     this.broadcast({ type: "presence", online: this.online() });
     return true;
   }
-  async destroy() {
+  async destroy(reason = "房间已被管理员删除", closed = false) {
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() || {};
-      if (a.voice) this.voiceLeave(ws, a, "房间被删除");
-      try { ws.send(JSON.stringify({ type: "kicked", reason: "房间已被管理员删除" })); ws.close(4004, "room deleted"); } catch {}
+      if (a.voice) this.voiceLeave(ws, a, closed ? "房间已关闭" : "房间被删除");
+      try { ws.send(JSON.stringify({ type: "kicked", reason, closed })); ws.close(4004, "room deleted"); } catch {}
     }
     await this.ctx.storage.deleteAll();
     this.init();

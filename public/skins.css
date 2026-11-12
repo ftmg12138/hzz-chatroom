@@ -508,3 +508,12 @@ html[data-skin] .vroom .tile .off::before{content:"";position:absolute;inset:0;b
 .snav-help .mascot{pointer-events:none}
 .snav-list{margin-bottom:52px}
 @media (min-width:901px) and (max-height:860px){.snav-help{display:none}.snav-list{margin-bottom:0}.snav-foot{margin-top:auto}}
+
+/* 关闭房间按钮 + 确认框（四套主题共用，按钮颜色取各主题的 --danger） */
+.confirm-modal .card{max-width:400px}
+.confirm-modal .sub{margin:10px 0 18px;line-height:1.6}
+.confirm-actions{justify-content:flex-end;gap:10px;margin-bottom:0!important}
+.confirm-actions .btn{flex:none}
+.btn.close-room{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+.btn.close-room:hover{background:color-mix(in srgb,var(--danger) 14%,transparent)}
+@media (max-width:560px){.btn.close-room .lbl{display:none}}

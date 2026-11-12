@@ -72,6 +72,22 @@ function hydrateAll(only) {
 }
 new MutationObserver(() => { clearTimeout(window.__avH); window.__avH = setTimeout(() => hydrateAll(), 0); }).observe(document.documentElement, { childList: true, subtree: true });
 
+// 确认对话框（随主题配色）：confirmDialog({ title, text, ok, danger }) → Promise<boolean>
+window.confirmDialog = (o = {}) => new Promise((resolve) => {
+  const wrap = document.createElement("div"); wrap.className = "modal confirm-modal";
+  wrap.innerHTML = `<div class="card" role="dialog" aria-modal="true"><h2></h2><p class="sub"></p>
+    <div class="row confirm-actions"><button type="button" class="btn ghost" data-no>取消</button><button type="button" class="btn ${o.danger === false ? "" : "danger"}" data-yes></button></div></div>`;
+  wrap.querySelector("h2").textContent = o.title || "确定吗？";
+  wrap.querySelector(".sub").textContent = o.text || "";
+  wrap.querySelector("[data-yes]").textContent = o.ok || "确定";
+  const done = (v) => { document.removeEventListener("keydown", onKey); wrap.remove(); resolve(v); };
+  const onKey = (e) => { if (e.key === "Escape") done(false); };
+  wrap.onclick = (e) => { if (e.target === wrap || e.target.closest("[data-no]")) done(false); else if (e.target.closest("[data-yes]")) done(true); };
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(wrap);
+  wrap.querySelector("[data-no]").focus();
+});
+
 // 头像选择面板：openAvatarPicker(me, { welcome }) → Promise<user|null>
 window.openAvatarPicker = (me, opt = {}) => new Promise((resolve) => {
   avManifestLoad();
