@@ -99,6 +99,16 @@ export class Directory extends DurableObject {
         this.setMeta("schema_version", 5);
       });
     }
+    if (Number(this.meta("schema_version")) < 6) {
+      // v6：房间「保留」开关。新房间默认 keep=0（10 分钟内在线不足 2 人自动关闭）；
+      // 上线前已存在的房间全部设为 keep=1，不会被这次改动自动删除（房主可在房间里自行关闭保留）
+      this.ctx.storage.transactionSync(() => {
+        this.sql.exec("ALTER TABLE rooms ADD COLUMN keep INTEGER NOT NULL DEFAULT 0");
+        const n = this.sql.exec("UPDATE rooms SET keep=1").rowsWritten;
+        this.setMeta("keep_migrated_rooms", String(n));
+        this.setMeta("schema_version", 6);
+      });
+    }
   }
 
   // ---------- 工具 ----------
@@ -341,7 +351,7 @@ export class Directory extends DurableObject {
     const u = await this.sessionUser(token);
     if (!u || u.must_change) return null;
     kind = kind === "video" ? "video" : "text";
-    const r = this.one(`SELECT r.number, r.name, r.kind, r.visibility, r.creator_id, r.creator_name FROM rooms r JOIN room_access a ON a.room=r.number AND a.kind=r.kind WHERE a.user_id=? AND r.number=? AND r.kind=?`, u.id, String(number), kind);
+    const r = this.one(`SELECT r.number, r.name, r.kind, r.visibility, r.creator_id, r.creator_name, r.keep FROM rooms r JOIN room_access a ON a.room=r.number AND a.kind=r.kind WHERE a.user_id=? AND r.number=? AND r.kind=?`, u.id, String(number), kind);
     if (!r) return null;
     this.sql.exec("UPDATE rooms SET last_active_at=? WHERE kind=? AND number=?", Date.now(), kind, r.number);
     return { user: this.publicUser(u), room: r };
@@ -590,7 +600,7 @@ export class Directory extends DurableObject {
   async adminRooms(token, q) {
     return this.wrap(async () => {
       await this.requireAdmin(token);
-      const base = `SELECT r.number, r.name, r.kind, r.creator_id, r.creator_name, r.created_at, r.last_active_at, r.visibility, r.has_pw,
+      const base = `SELECT r.number, r.name, r.kind, r.creator_id, r.creator_name, r.created_at, r.last_active_at, r.visibility, r.has_pw, r.keep,
                     (SELECT COUNT(*) FROM join_requests j WHERE j.kind=r.kind AND j.room=r.number AND j.status='pending') AS pending,
                     (SELECT COUNT(*) FROM room_access a WHERE a.room=r.number AND a.kind=r.kind) AS members FROM rooms r`;
       const rows = q ? this.all(`${base} WHERE r.number LIKE ? OR r.creator_name LIKE ? ORDER BY r.last_active_at DESC LIMIT 500`, `%${q}%`, `%${q}%`)
@@ -629,6 +639,35 @@ export class Directory extends DurableObject {
         detail: r.creator_id === u.id ? "房主关闭房间" : `管理员关闭房间（房主 ${r.creator_name || "未知"}）` });
       return { number: r.number, kind, byOwner: r.creator_id === u.id };
     });
+  }
+
+  /** 房主（或管理员）设置「保留房间」：keep=1 时不自动关闭 */
+  async setRoomKeep(token, number, kind, keep, c) {
+    return this.wrap(async () => {
+      const u = await this.sessionUser(token);
+      if (!u) fail(401, "请先登录");
+      kind = kind === "video" ? "video" : "text";
+      const r = this.one("SELECT number, creator_id, keep FROM rooms WHERE kind=? AND number=?", kind, String(number || "").trim());
+      if (!r) fail(404, "房间不存在");
+      if (!u.is_admin && (r.creator_id == null || r.creator_id !== u.id)) fail(403, "只有房主可以设置");
+      keep = keep ? 1 : 0;
+      this.sql.exec("UPDATE rooms SET keep=? WHERE kind=? AND number=?", keep, kind, r.number);
+      if (keep !== r.keep) this.log(kind === "video" ? "video_room_keep" : "room_keep", { ...c, userId: u.id, username: u.username, room: r.number, detail: keep ? "开启保留（不自动关闭）" : "关闭保留（恢复自动关闭）" });
+      return { number: r.number, kind, keep: !!keep };
+    });
+  }
+
+  /** 房间 DO 的闹钟到点后调用（内部 RPC，无外部入口）：未保留的房间按「房主关闭」同样的方式删除 */
+  async autoCloseRoom(number, kind, detail) {
+    kind = kind === "video" ? "video" : "text";
+    const r = this.one("SELECT number, keep, creator_id, creator_name FROM rooms WHERE kind=? AND number=?", kind, String(number || ""));
+    if (!r) return { missing: true };
+    if (r.keep) return { keep: true };
+    this.sql.exec("DELETE FROM room_access WHERE kind=? AND room=?", kind, r.number);
+    this.sql.exec("DELETE FROM rooms WHERE kind=? AND number=?", kind, r.number);
+    this.sql.exec("DELETE FROM join_requests WHERE kind=? AND room=?", kind, r.number);
+    this.log(kind === "video" ? "video_room_auto_close" : "room_auto_close", { userId: r.creator_id, username: r.creator_name, room: r.number, path: "auto", detail: detail || "长时间无人，自动关闭" });
+    return { closed: true, number: r.number };
   }
 
   /** 把某人移出房间：撤销其进入权限（再进需要重新输入房间密码） */

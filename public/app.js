@@ -151,7 +151,7 @@
   function closeWs() { $("#rq-panel").classList.add("hidden"); voiceStop(); $("#vc-bar").classList.remove("open"); wantClose = true; clearInterval(pingT); if (ws) { try { ws.close(); } catch {} } ws = null; curRoom = null; }
   function openRoom(number) {
     if (curRoom === number && ws) return;
-    closeWs(); wantClose = false; curRoom = number; retry = 0; closingSelf = false; isOwner = false; $("#close-room-btn").classList.add("hidden");
+    closeWs(); wantClose = false; curRoom = number; retry = 0; closingSelf = false; isOwner = false; canManage = false; idleSt = {}; roomIdleUI({}, false); $("#close-room-btn").classList.add("hidden");
     show("v-chat");
     $("#ch-title").textContent = "房间 " + number;
     $("#ch-msgs").innerHTML = "";
@@ -170,6 +170,7 @@
       if (m.type === "hello") {
         $("#ch-title").innerHTML = `${esc(m.name || m.room)}<small>${m.visibility === "public" ? "🌿 公开" : "🔒 私密"} · ${esc(m.room)}</small>`;
         isOwner = !!m.isOwner; $("#rq-btn").classList.toggle("hidden", !isOwner); $("#close-room-btn").classList.toggle("hidden", !isOwner); if (isOwner) loadRequests();
+        canManage = isOwner || !!m.isAdmin; idleSt = { keep: m.keep, idleAt: m.idleAt, idleMs: m.idleMs }; roomIdleUI(idleSt, canManage);
         $("#ch-msgs").innerHTML = "";
         if (!m.history.length) addSys("还没有消息，打个招呼吧 👋").classList.add("hint");
         m.history.forEach(addMsg); online(m.online); scrollEnd(true);
@@ -185,6 +186,7 @@
       } else if (m.type === "deleted") { const el = document.querySelector(`[data-id="${m.id}"]`); if (el) el.remove(); }
       else if (m.type === "cleared") { $("#ch-msgs").innerHTML = ""; addMsg(m.msg); }
       else if (m.type === "kicked") { wantClose = true; if (m.closed) { if (!closingSelf) toast(m.reason, 5000); } else alert(m.reason); location.hash = ""; }
+      else if (m.type === "room-idle") { idleSt = { ...idleSt, keep: m.keep, idleAt: m.idleAt }; roomIdleUI(idleSt, canManage); }
       else if (m.type === "error") addSys("⚠ " + m.error);
       else if (m.type === "join-request") { toast(`${m.username} 申请加入房间`); loadRequests(); }
       else if (m.type.startsWith("voice-")) onVoice(m);
@@ -249,7 +251,17 @@
   $("#ch-msgs").onclick = () => $("#ch-side").classList.remove("open");
 
   // ===== 房主：处理加入申请 =====
-  let isOwner = false, closingSelf = false;
+  let isOwner = false, closingSelf = false, canManage = false, idleSt = {};
+  // 保留房间（房主 / 管理员）：开启后不自动关闭；取消后重新计时
+  $("#keep-btn").onclick = async () => {
+    if (!curRoom || !canManage) return;
+    const want = !idleSt.keep;
+    try {
+      const d = await api("/api/rooms/keep", { method: "POST", body: { number: curRoom, keep: want } });
+      idleSt = { ...idleSt, keep: d.keep, idleAt: d.idleAt, idleMs: d.idleMs || idleSt.idleMs }; roomIdleUI(idleSt, canManage);
+      toast(want ? "已保留房间，不会自动关闭" : `已取消保留：在线不足 2 人持续 ${Math.round((idleSt.idleMs || 600000) / 60000)} 分钟会自动关闭`);
+    } catch (er) { toast(er.message); }
+  };
   async function loadRequests() {
     if (!isOwner || !curRoom) return;
     try {

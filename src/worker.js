@@ -126,7 +126,9 @@ async function api(req, env, url) {
   }
   if (p === "/api/rooms" && m === "POST") {
     const b = await body(req); if (!b) return err(400, "请求格式错误");
-    return out(await D.createRoom(token, b.number, b.password, b.name, "text", c, b.visibility));
+    const r = await D.createRoom(token, b.number, b.password, b.name, "text", c, b.visibility);
+    if (r.ok) await roomStub(env, r.data.room.number).roomMeta(r.data.room.number, false, true).catch(() => {}); // 开始 10 分钟计时（没人进来也会到点关闭）
+    return out(r);
   }
   // 公开房间：列表 / 申请加入 / 房主处理申请
   if (p === "/api/rooms/public" && m === "GET") {
@@ -150,6 +152,13 @@ async function api(req, env, url) {
     const b = await body(req); if (!b) return err(400, "请求格式错误");
     return out(await D.joinRoom(token, b.number, b.password, c));
   }
+  if (p === "/api/rooms/keep" && m === "POST") {
+    // 房主（或管理员）设置「保留房间」：开启后不自动关闭；关闭后重新计 10 分钟
+    const b = await body(req); if (!b) return err(400, "请求格式错误");
+    const r = await D.setRoomKeep(token, b.number, "text", !!b.keep, c);
+    if (r.ok) Object.assign(r.data, await roomStub(env, r.data.number).roomMeta(r.data.number, r.data.keep, !r.data.keep));
+    return out(r);
+  }
   if (p === "/api/rooms/close" && m === "POST") {
     // 房主（或管理员）关闭房间：删除登记，踢出房间里的所有人（含语音频道）
     const b = await body(req); if (!b) return err(400, "请求格式错误");
@@ -171,7 +180,8 @@ async function api(req, env, url) {
     if (!acc) return err(403, "无权进入该房间，请先用房间号和密码加入");
     const h = new Headers({ Upgrade: "websocket", "X-Uid": String(acc.user.id), "X-Username": encodeURIComponent(acc.user.username), "X-Room": acc.room.number,
       "X-Ip": c.ip, "X-Country": c.country, "X-UA": encodeURIComponent(c.ua.slice(0, 300).replace(/[\uD800-\uDFFF]/g, "")),
-      "X-Owner": String(acc.room.creator_id ?? ""), "X-Owner-Name": encodeURIComponent(acc.room.creator_name || ""), "X-Visibility": acc.room.visibility || "private", "X-Room-Name": encodeURIComponent(acc.room.name || "") });
+      "X-Owner": String(acc.room.creator_id ?? ""), "X-Owner-Name": encodeURIComponent(acc.room.creator_name || ""), "X-Visibility": acc.room.visibility || "private", "X-Room-Name": encodeURIComponent(acc.room.name || ""),
+      "X-Keep": acc.room.keep ? "1" : "0", "X-Admin": acc.user.isAdmin ? "1" : "0" });
     return roomStub(env, acc.room.number).fetch("https://room/ws", { headers: h });
   }
 

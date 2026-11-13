@@ -1,12 +1,13 @@
 // ChatRoom：每个房间一个 Durable Object（WebSocket Hibernation + SQLite 消息历史）
 import { DurableObject } from "cloudflare:workers";
+import { withIdle } from "./idle.js";
 
 const HISTORY = 100;
 const MAX_LEN = 2000;
 const KEEP = 5000;
 export const VOICE_MAX = 8; // 语音频道人数上限（音频 mesh：每人需与其余每人各建一条连接）
 
-export class ChatRoom extends DurableObject {
+class ChatRoomBase extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.sql = ctx.storage.sql;
@@ -23,6 +24,7 @@ export class ChatRoom extends DurableObject {
   sessions() {
     return this.ctx.getWebSockets().filter((ws) => ws.readyState === 1).map((ws) => ({ ws, a: ws.deserializeAttachment() || {} }));
   }
+  presentUids(exceptWs) { return new Set(this.sessions().filter((s) => s.ws !== exceptWs && s.a.uid).map((s) => s.a.uid)); }
   online() {
     const seen = new Map();
     for (const { a } of this.sessions()) if (a.uid) seen.set(a.uid, a.username);
@@ -58,9 +60,11 @@ export class ChatRoom extends DurableObject {
     this.ctx.acceptWebSocket(server, [`u:${uid}`]);
     const sid = crypto.randomUUID().slice(0, 8);
     server.serializeAttachment({ uid, username, ip, country, ua, room, sid, voice: false, muted: false });
+    this.kvSet("keep", request.headers.get("X-Keep") === "1" ? "1" : "0");
+    await this.idleCheck();
     const ownerId = Number(request.headers.get("X-Owner")) || null;
-    const roomInfo = { owner: decodeURIComponent(request.headers.get("X-Owner-Name") || ""), isOwner: ownerId === uid, visibility: request.headers.get("X-Visibility") || "private",
-      name: decodeURIComponent(request.headers.get("X-Room-Name") || "") };
+    const roomInfo = { owner: decodeURIComponent(request.headers.get("X-Owner-Name") || ""), isOwner: ownerId === uid, isAdmin: request.headers.get("X-Admin") === "1",
+      visibility: request.headers.get("X-Visibility") || "private", name: decodeURIComponent(request.headers.get("X-Room-Name") || ""), ...this.idleState() };
     server.send(JSON.stringify({ type: "hello", room, me: username, history: this.history(), online: this.online(), voice: this.voiceList(), voiceMax: VOICE_MAX, ...roomInfo }));
     if (firstConn) this.broadcast({ type: "presence", online: this.online(), joined: username });
     return new Response(null, { status: 101, webSocket: client });
@@ -134,14 +138,15 @@ export class ChatRoom extends DurableObject {
 
   async webSocketClose(ws, code) {
     try { ws.close(code === 1005 || code === 1006 ? 1000 : code, "bye"); } catch {}
-    this.afterLeave(ws);
+    await this.afterLeave(ws);
   }
-  async webSocketError(ws) { this.afterLeave(ws); }
-  afterLeave(ws) {
+  async webSocketError(ws) { await this.afterLeave(ws); }
+  async afterLeave(ws) {
     const a = ws.deserializeAttachment() || {};
     if (a.voice) this.voiceLeave(ws, a, "断开");
     const online = this.online();
     if (a.username && !online.includes(a.username)) this.broadcast({ type: "presence", online, left: a.username });
+    await this.idleCheck(ws);
   }
 
   // ---------- 管理 RPC ----------
@@ -177,6 +182,7 @@ export class ChatRoom extends DurableObject {
       try { ws.send(JSON.stringify({ type: "kicked", reason })); ws.close(4003, "kicked"); } catch {}
     }
     this.broadcast({ type: "presence", online: this.online() });
+    await this.idleCheck();
     return true;
   }
   async destroy(reason = "房间已被管理员删除", closed = false) {
@@ -185,8 +191,10 @@ export class ChatRoom extends DurableObject {
       if (a.voice) this.voiceLeave(ws, a, closed ? "房间已关闭" : "房间被删除");
       try { ws.send(JSON.stringify({ type: "kicked", reason, closed })); ws.close(4004, "room deleted"); } catch {}
     }
+    await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.init();
     return true;
   }
 }
+export const ChatRoom = withIdle(ChatRoomBase, "text");

@@ -8,7 +8,7 @@
 <link rel="icon" href="data:,">
 <script src="/theme.js?v=13"></script>
 <link rel="stylesheet" href="/style.css?v=13">
-<link rel="stylesheet" href="/skins.css?v=14">
+<link rel="stylesheet" href="/skins.css?v=16">
 </head>
 <body>
 <!-- 登录 / 注册：左侧插画 + 右侧表单 -->
@@ -137,10 +137,10 @@
 <section id="v-chat" class="chat hidden">
   <div class="top">
     <button class="btn ghost sm" id="ch-back">‹ 大厅</button>
-    <div class="center-col"><div class="title" id="ch-title"></div><div class="status" id="ch-status">连接中…</div></div>
+    <div class="center-col"><div class="title" id="ch-title"></div><div class="status" id="ch-status">连接中…</div><div class="room-hint hidden" id="room-hint"></div></div>
     <div class="row nogrow">
       <button class="btn ghost sm hidden" id="rq-btn" title="加入申请">📨 <span class="badge-n hidden" id="rq-n">0</span></button>
-      <button class="btn ghost sm close-room hidden" id="close-room-btn" title="关闭房间（仅房主）">⛔<span class="lbl"> 关闭房间</span></button>
+      <button class="btn ghost sm keep-toggle hidden" id="keep-btn" aria-pressed="false">📌<span class="lbl"> 保留房间</span></button><button class="btn ghost sm close-room hidden" id="close-room-btn" title="关闭房间（仅房主）">⛔<span class="lbl"> 关闭房间</span></button>
       <button class="btn ghost sm" id="vc-toggle" title="语音频道">🎧 <span id="vc-count">0</span></button>
       <button class="btn ghost sm online-btn" id="ch-online-btn">👥 <span id="ch-count">0</span></button>
       <button class="btn ghost sm icon" data-open-theme title="主题">🎨</button>
@@ -172,7 +172,7 @@
   </div>
 </section>
 
-<script src="/common.js?v=14"></script>
-<script src="/app.js?v=14"></script>
+<script src="/common.js?v=16"></script>
+<script src="/app.js?v=15"></script>
 </body>
 </html>

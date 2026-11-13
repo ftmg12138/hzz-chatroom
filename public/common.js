@@ -72,6 +72,22 @@ function hydrateAll(only) {
 }
 new MutationObserver(() => { clearTimeout(window.__avH); window.__avH = setTimeout(() => hydrateAll(), 0); }).observe(document.documentElement, { childList: true, subtree: true });
 
+// 房间自动关闭状态（两个站点共用）：st = { keep, idleAt, idleMs }；canManage = 房主或管理员
+window.roomIdleUI = (st, canManage) => {
+  const btn = $("#keep-btn"), hint = $("#room-hint"); if (!btn || !hint) return;
+  st = st || {};
+  const mins = Math.max(1, Math.round((st.idleMs || 600000) / 60000));
+  btn.classList.toggle("hidden", !canManage);
+  btn.classList.toggle("on", !!st.keep); btn.setAttribute("aria-pressed", st.keep ? "true" : "false");
+  btn.querySelector(".lbl").textContent = st.keep ? " 已保留" : " 保留房间";
+  btn.title = st.keep ? `已保留：不会自动关闭。点击取消保留（之后在线不足 2 人持续 ${mins} 分钟会自动关闭）` : `保留房间（不自动关闭）。未保留时，在线不足 2 人持续 ${mins} 分钟会自动关闭`;
+  let t = "";
+  if (st.keep) t = "📌 已保留，不会自动关闭";
+  else if (st.idleAt) { const d = new Date(st.idleAt), p = (n) => String(n).padStart(2, "0"); t = `⏳ 人少，${p(d.getHours())}:${p(d.getMinutes())} 自动关闭`; }
+  hint.textContent = t; hint.classList.toggle("hidden", !t);
+  hint.title = st.keep ? "房主已设置保留" : `在线不足 2 人持续 ${mins} 分钟会自动关闭，有人进来就会取消`;
+};
+
 // 确认对话框（随主题配色）：confirmDialog({ title, text, ok, danger }) → Promise<boolean>
 window.confirmDialog = (o = {}) => new Promise((resolve) => {
   const wrap = document.createElement("div"); wrap.className = "modal confirm-modal";
